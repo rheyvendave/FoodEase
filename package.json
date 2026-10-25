@@ -1,0 +1,13 @@
+{
+  "name": "foodease",
+  "version": "1.0.0",
+  "description": "React + Vite frontend, Node.js + Express API, and MongoDB.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
