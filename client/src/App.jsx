@@ -45,6 +45,64 @@ const defaultStoreProfile = {
 
 const peso = value => '₱' + Number(value || 0).toFixed(2);
 const empty = { name: '', description: '', category: 'Main Course', price: '', imageUrl: '', available: true };
+const maxFoodImageBytes = 450 * 1024;
+
+async function prepareFoodImage(file) {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    throw new Error('Choose a JPG, PNG, or WebP image.');
+  }
+  if (file.size > 12 * 1024 * 1024) {
+    throw new Error('Choose an image smaller than 12 MB.');
+  }
+
+  const bitmap = await createImageBitmap(file);
+  try {
+    const canvas = document.createElement('canvas');
+    let width = Math.min(bitmap.width, 1200);
+    let height = Math.round(bitmap.height * (width / bitmap.width));
+    if (height > 1200) {
+      width = Math.round(width * (1200 / height));
+      height = 1200;
+    }
+
+    for (let resize = 0; resize < 6; resize += 1) {
+      canvas.width = width;
+      canvas.height = height;
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Your browser could not prepare this image.');
+      context.drawImage(bitmap, 0, 0, width, height);
+
+      for (const quality of [0.82, 0.7, 0.58]) {
+        const blob = await new Promise((resolve, reject) => {
+          canvas.toBlob(
+            result => result ? resolve(result) : reject(new Error('Your browser could not prepare this image.')),
+            'image/webp',
+            quality
+          );
+        });
+        if (blob.type !== 'image/webp') {
+          throw new Error('Your browser cannot optimize images for upload. Try a recent browser.');
+        }
+        if (blob.size <= maxFoodImageBytes) {
+          return await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error('The image could not be read.'));
+            reader.readAsDataURL(blob);
+          });
+        }
+      }
+
+      width = Math.round(width * 0.8);
+      height = Math.round(height * 0.8);
+    }
+  } finally {
+    bitmap.close();
+  }
+
+  throw new Error('This image could not be reduced enough. Choose a smaller image.');
+}
+
 const chatLabels = {
   en: {
     title: 'Kain-Bot',
@@ -110,6 +168,7 @@ export default function App() {
   const [profileSaving, setProfileSaving] = useState(false);
   const [form, setForm] = useState(empty);
   const [edit, setEdit] = useState('');
+  const [imageProcessing, setImageProcessing] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
   const [chatLanguage, setChatLanguage] = useState('auto');
@@ -449,17 +508,39 @@ const availableFoods = foods.filter(food => food.available);
   async function save(event) {
     event.preventDefault();
     try {
+      if (imageProcessing) throw Error('Wait for the image to finish processing.');
       if (demo) throw Error('Connect MongoDB and start the server first.');
       await api(edit ? '/foods/' + edit : '/foods', {
         method: edit ? 'PUT' : 'POST',
         body: JSON.stringify({ ...form, price: Number(form.price) })
       }, token);
+      const imageInput = document.getElementById('admin-food-image-upload');
+      if (imageInput) imageInput.value = '';
       setForm(empty);
       setEdit('');
       await load();
       setMsg('Menu item saved');
     } catch (error) {
       setMsg(error.message);
+    }
+  }
+
+  async function selectFoodImage(event) {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    if (!file) return;
+
+    setImageProcessing(true);
+    setMsg('');
+    try {
+      const imageUrl = await prepareFoodImage(file);
+      setForm(current => ({ ...current, imageUrl }));
+      setMsg('Image ready to save');
+    } catch (error) {
+      input.value = '';
+      setMsg(error.message);
+    } finally {
+      setImageProcessing(false);
     }
   }
 
@@ -1004,9 +1085,10 @@ const availableFoods = foods.filter(food => food.available);
                             <label>Category<input required placeholder="e.g. Ulam" value={form.category} onChange={event => setForm({ ...form, category: event.target.value })} /></label>
                             <label>Price (₱)<input type="number" min="0" step="0.01" required placeholder="0.00" value={form.price} onChange={event => setForm({ ...form, price: event.target.value })} /></label>
                           </div>
-                          <label className="admin-food-image-field">Image URL<input placeholder="https://example.com/image.jpg" value={form.imageUrl} onChange={event => setForm({ ...form, imageUrl: event.target.value })} /></label>
+                          <label className="admin-food-image-field">Food image<input key={edit || 'new-food'} id="admin-food-image-upload" type="file" accept="image/jpeg,image/png,image/webp" onChange={selectFoodImage} /><small>Choose a JPG, PNG, or WebP image. It will be optimized before saving.</small></label>
+                          {form.imageUrl && <div className="admin-food-image-preview"><img src={form.imageUrl} alt="Selected food preview" /><button className="admin-secondary-button" type="button" onClick={() => { setForm({ ...form, imageUrl: '' }); const input = document.getElementById('admin-food-image-upload'); if (input) input.value = ''; }}>Remove image</button></div>}
                           <label className="check admin-availability-check"><input type="checkbox" checked={form.available} onChange={event => setForm({ ...form, available: event.target.checked })} /> Available to customers</label>
-                          <button className="admin-primary-button admin-form-submit">{edit ? 'Save changes' : '＋　Add food'}</button>
+                          <button className="admin-primary-button admin-form-submit" disabled={imageProcessing}>{imageProcessing ? 'Preparing image...' : edit ? 'Save changes' : '＋　Add food'}</button>
                         </form>
 
                         <section className="admin-section-card">

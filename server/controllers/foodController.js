@@ -1,5 +1,23 @@
 import mongoose from "mongoose";
 import Food from "../models/Food.js";
+
+const MAX_IMAGE_DATA_URL_LENGTH = 615_000;
+const MAX_IMAGE_BYTES = 450 * 1024;
+const imageDataUrlPattern = /^data:image\/webp;base64,([A-Za-z0-9+/]+={0,2})$/;
+
+function isValidImageUrl(imageUrl) {
+  if (typeof imageUrl !== "string") return false;
+  if (!imageUrl) return true;
+  if (!imageUrl.startsWith("data:")) return imageUrl.length <= 2048;
+
+  const match = imageDataUrlPattern.exec(imageUrl);
+  if (!match || imageUrl.length > MAX_IMAGE_DATA_URL_LENGTH) return false;
+  const image = Buffer.from(match[1], "base64");
+  return image.length <= MAX_IMAGE_BYTES
+    && image.toString("ascii", 0, 4) === "RIFF"
+    && image.toString("ascii", 8, 12) === "WEBP";
+}
+
 export async function listFoods(req, res, next) {
   try {
     const { search = "", category = "" } = req.query;
@@ -42,6 +60,8 @@ export async function createFood(req, res, next) {
       return res
         .status(400)
         .json({ message: "Name, category, and valid price are required." });
+    if (!isValidImageUrl(imageUrl))
+      return res.status(400).json({ message: "Choose a valid image no larger than 450 KB." });
     res
       .status(201)
       .json(
@@ -72,6 +92,8 @@ export async function updateFood(req, res, next) {
       "available",
     ])
       if (req.body?.[k] !== undefined) updates[k] = req.body[k];
+    if (updates.imageUrl !== undefined && !isValidImageUrl(updates.imageUrl))
+      return res.status(400).json({ message: "Choose a valid image no larger than 450 KB." });
     if (updates.price !== undefined) {
       if (!Number.isFinite(Number(updates.price)) || Number(updates.price) < 0)
         return res.status(400).json({ message: "Invalid price." });

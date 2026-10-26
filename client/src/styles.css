@@ -6299,6 +6299,48 @@ footer {
   font: 11px 'DM Sans', Arial, sans-serif;
 }
 
+.admin-food-image-field small {
+  color: #758179;
+  font-size: 9px;
+  font-weight: 400;
+}
+
+.admin-food-form input[type="file"] {
+  padding: 5px;
+}
+
+.admin-food-form input[type="file"]::file-selector-button {
+  min-height: 25px;
+  margin-right: 9px;
+  padding: 0 10px;
+  border: 1px solid #d5e3d7;
+  border-radius: 5px;
+  color: #315d42;
+  background: #f5faf5;
+  font: 700 10px 'DM Sans', Arial, sans-serif;
+  cursor: pointer;
+}
+
+.admin-food-image-preview {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-food-image-preview img {
+  width: 88px;
+  height: 68px;
+  border: 1px solid #e0e9e3;
+  border-radius: 7px;
+  object-fit: cover;
+  background: #f4f7f3;
+}
+
+.admin-food-image-preview .admin-secondary-button {
+  min-height: 30px;
+}
+
 .admin-food-form textarea {
   min-height: 58px;
   resize: vertical;
@@ -7699,7 +7741,8 @@ footer {
 .theme-dark .admin-settings-card p,
 .theme-dark .admin-empty-state,
 .theme-dark .admin-food-form label,
-.theme-dark .admin-profile-form label {
+.theme-dark .admin-profile-form label,
+.theme-dark .admin-food-image-field small {
   color: #adbbb1;
 }
 
@@ -7728,6 +7771,17 @@ footer {
 .theme-dark .admin-profile-form textarea {
   border-color: #3b4b40;
   color: #e1eae3;
+  background: #121b15;
+}
+
+.theme-dark .admin-food-form input[type="file"]::file-selector-button {
+  border-color: #43574a;
+  color: #dce9df;
+  background: #202d24;
+}
+
+.theme-dark .admin-food-image-preview img {
+  border-color: #3b4b40;
   background: #121b15;
 }
 

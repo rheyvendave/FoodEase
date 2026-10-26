@@ -37,7 +37,10 @@ export async function createOrder(req, res, next) {
         foodId: f._id,
         name: f.name,
         price: f.price,
-        imageUrl: f.imageUrl,
+        imageUrl: typeof f.imageUrl === "string"
+          && f.imageUrl.startsWith("data:image/webp;base64,")
+          ? ""
+          : f.imageUrl || "",
         quantity: q,
       });
     }
