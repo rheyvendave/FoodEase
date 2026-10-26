@@ -318,13 +318,26 @@ const availableFoods = foods.filter(food => food.available);
     try {
       const result = await api('/chat', {
         method: 'POST',
-        body: JSON.stringify({ question: text, language: chatLanguage })
+        body: JSON.stringify({
+          question: text,
+          language: chatLanguage,
+          history: chatMessages.slice(-8).map(message => ({
+            role: message.from === 'bot' ? 'assistant' : 'user',
+            content: message.text
+          }))
+        })
       });
       setChatMessages(messages => [...messages, { from: 'bot', text: result.answer }]);
     } catch (error) {
+      const language = chatLanguage === 'auto' ? detectChatLanguage(text) : chatLanguage;
+      const offlineNotice = language === 'tagalog'
+        ? 'Hindi ko maabot ang live chat ngayon, pero matutulungan pa rin kita:\n'
+        : language === 'bisaya'
+          ? 'Dili nako maabot ang live chat karon, pero makatabang gihapon ko:\n'
+          : 'I can’t reach the live chat service right now, but I can still help:\n';
       setChatMessages(messages => [
         ...messages,
-        { from: 'bot', text: `AI reply unavailable (${error.message}). Here’s a menu-based answer:\n${getChatAnswer(text)}` }
+        { from: 'bot', text: `${offlineNotice}${getChatAnswer(text)}` }
       ]);
     } finally {
       setChatLoading(false);

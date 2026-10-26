@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nodemon server.js",
     "start": "node server.js",
-    "seed:menu": "node seedMenu.js"
+    "seed:menu": "node seedMenu.js",
+    "test": "node --test"
   },
   "dependencies": {
     "cors": "^2.8.5",

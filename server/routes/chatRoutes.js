@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import Food from '../models/Food.js';
+import { buildChatAnswer } from '../chatAssistant.js';
 
 const router = Router();
 const requestBuckets = new Map();
@@ -33,27 +34,46 @@ function limitChatRequests(req, res, next) {
 }
 
 router.post('/', limitChatRequests, async (req, res, next) => {
-  const { question, language = 'auto' } = req.body || {};
-  if (typeof question !== 'string' || !question.trim() || question.length > 500) {
+  const { question, language = 'auto', history = [] } = req.body || {};
+  if (typeof question !== 'string' || !question.trim() || question.trim().length > 500) {
     return res.status(400).json({ message: 'Enter a question of up to 500 characters.' });
   }
   if (!['auto', 'en', 'tagalog', 'bisaya'].includes(language)) {
     return res.status(400).json({ message: 'Choose a supported chat language.' });
   }
-  if (!process.env.OPENROUTER_API_KEY) {
-    return res.status(503).json({ message: 'OpenRouter chat is not configured. Add OPENROUTER_API_KEY to server/.env.' });
+  if (!Array.isArray(history) || history.length > 8 || history.some(message =>
+    !message
+    || !['user', 'assistant'].includes(message.role)
+    || typeof message.content !== 'string'
+    || message.content.length > 500
+  )) {
+    return res.status(400).json({ message: 'Chat history must contain up to 8 short user or assistant messages.' });
   }
+  const safeHistory = history.map(message => ({
+    role: message.role,
+    content: message.content.trim()
+  })).filter(message => message.content);
 
+  let menu;
   try {
-    const menu = await Food.find({ available: true })
+    menu = await Food.find({ available: true })
       .select('name description category price -_id')
       .sort({ category: 1, name: 1 })
       .limit(100)
       .lean();
-    if (!menu.length) {
-      return res.status(503).json({ message: 'The menu is not available right now. Please try again later.' });
-    }
+  } catch (error) {
+    return next(error);
+  }
 
+  const fallback = () => res.json({
+    answer: buildChatAnswer(question.trim(), language, menu, safeHistory)
+  });
+
+  if (!process.env.OPENROUTER_API_KEY) {
+    return fallback();
+  }
+
+  try {
     const languageInstruction = language === 'auto'
       ? 'Reply in the language used by the customer (English, Tagalog, or Bisaya).'
       : `Reply in ${language === 'en' ? 'English' : language === 'tagalog' ? 'Tagalog' : 'Bisaya'}.`;
@@ -79,6 +99,7 @@ router.post('/', limitChatRequests, async (req, res, next) => {
         model,
         messages: [
           { role: 'system', content: instruction },
+          ...safeHistory,
           { role: 'user', content: question.trim() }
         ],
         temperature: 0.2,
@@ -88,17 +109,8 @@ router.post('/', limitChatRequests, async (req, res, next) => {
     });
 
     if (!response.ok) {
-      const messages = {
-        401: 'OpenRouter rejected the API key. Check OPENROUTER_API_KEY in server/.env.',
-        402: 'The OpenRouter account has insufficient credits. Add credits and try again.',
-        403: 'OpenRouter denied access to this model. Check the account and model permissions.',
-        404: 'The configured OpenRouter model was not found. Check OPENROUTER_MODEL in server/.env.',
-        429: 'OpenRouter is receiving too many requests. Please try again shortly.'
-      };
       console.error(`OpenRouter API returned HTTP ${response.status}.`);
-      return res.status(502).json({
-        message: messages[response.status] || 'Kain-Bot could not reach the AI service. Please try again shortly.'
-      });
+      return fallback();
     }
 
     const result = await response.json();
@@ -110,15 +122,13 @@ router.post('/', limitChatRequests, async (req, res, next) => {
         : '';
     if (!answer) {
       console.error('OpenRouter API returned no text for a chat response.');
-      return res.status(502).json({ message: 'Kain-Bot could not prepare a reply. Please try again.' });
+      return fallback();
     }
 
     return res.json({ answer });
   } catch (error) {
-    if (error.name === 'TimeoutError' || error.name === 'AbortError') {
-      return res.status(504).json({ message: 'Kain-Bot took too long to reply. Please try again.' });
-    }
-    return next(error);
+    console.error(`OpenRouter chat request failed (${error.name || 'unknown error'}); returning the menu assistant response.`);
+    return fallback();
   }
 });
 
