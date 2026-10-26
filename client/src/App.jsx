@@ -518,7 +518,7 @@ const availableFoods = foods.filter(food => food.available);
       setForm(empty);
       setEdit('');
       await load();
-      setMsg('Menu item saved');
+      setMsg(edit ? 'Menu item updated' : 'Menu item added');
     } catch (error) {
       setMsg(error.message);
     }
@@ -548,6 +548,7 @@ const availableFoods = foods.filter(food => food.available);
     try {
       await api('/foods/' + food._id, { method: 'DELETE' }, token);
       await load();
+      setMsg(`${food.name} deleted`);
     } catch (error) {
       setMsg(error.message);
     }
