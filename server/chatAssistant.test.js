@@ -49,18 +49,18 @@ test('provides useful shop information without an AI service', () => {
   assert.match(buildChatAnswer('Do you deliver?', 'en', menu), /Pickup and delivery are available/);
 });
 
-test('chat API answers from the menu when OpenRouter is not configured', async t => {
+test('chat API answers from the menu when OpenAI is not configured', async t => {
   t.mock.method(Food, 'find', () => ({
     select() { return this; },
     sort() { return this; },
     limit() { return this; },
     lean: async () => menu
   }));
-  const previousKey = process.env.OPENROUTER_API_KEY;
-  process.env.OPENROUTER_API_KEY = '';
+  const previousKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = '';
   t.after(() => {
-    if (previousKey === undefined) delete process.env.OPENROUTER_API_KEY;
-    else process.env.OPENROUTER_API_KEY = previousKey;
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousKey;
   });
 
   const app = express();
@@ -79,10 +79,58 @@ test('chat API answers from the menu when OpenRouter is not configured', async t
 
   assert.equal(response.status, 200);
   assert.match(result.answer, /Leche Flan/);
-  assert.doesNotMatch(result.answer, /OpenRouter|AI reply unavailable/);
+  assert.doesNotMatch(result.answer, /OpenAI|AI reply unavailable/);
 });
 
-test('chat API falls back when OpenRouter returns an error', async t => {
+test('chat API sends requests to OpenAI and returns its response', async t => {
+  t.mock.method(Food, 'find', () => ({
+    select() { return this; },
+    sort() { return this; },
+    limit() { return this; },
+    lean: async () => menu
+  }));
+  const previousKey = process.env.OPENAI_API_KEY;
+  const previousModel = process.env.OPENAI_MODEL;
+  process.env.OPENAI_API_KEY = 'test-only-key';
+  process.env.OPENAI_MODEL = 'gpt-test-model';
+  t.after(() => {
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousKey;
+    if (previousModel === undefined) delete process.env.OPENAI_MODEL;
+    else process.env.OPENAI_MODEL = previousModel;
+  });
+  const originalFetch = globalThis.fetch.bind(globalThis);
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    if (!String(url).startsWith('https://api.openai.com/')) {
+      return originalFetch(url, options);
+    }
+    assert.equal(String(url), 'https://api.openai.com/v1/chat/completions');
+    assert.equal(options.headers.Authorization, 'Bearer test-only-key');
+    const body = JSON.parse(options.body);
+    assert.equal(body.model, 'gpt-test-model');
+    assert.equal(body.messages.at(-1).content, 'What can I get for ₱150?');
+    return Response.json({ choices: [{ message: { content: 'Hotsilog and Turon.' } }] });
+  });
+
+  const app = express();
+  app.use(express.json());
+  app.use('/chat', chatRoutes);
+  const server = app.listen(0, '127.0.0.1');
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  await new Promise(resolve => server.once('listening', resolve));
+
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question: 'What can I get for ₱150?', language: 'en' })
+  });
+  const result = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(result.answer, 'Hotsilog and Turon.');
+});
+
+test('chat API falls back when OpenAI returns an error', async t => {
   t.mock.method(Food, 'find', () => ({
     select() { return this; },
     sort() { return this; },
@@ -91,16 +139,16 @@ test('chat API falls back when OpenRouter returns an error', async t => {
   }));
   const originalFetch = globalThis.fetch.bind(globalThis);
   t.mock.method(globalThis, 'fetch', async (url, options) => {
-    if (String(url).startsWith('https://openrouter.ai/')) {
+    if (String(url).startsWith('https://api.openai.com/')) {
       return new Response('', { status: 401 });
     }
     return originalFetch(url, options);
   });
-  const previousKey = process.env.OPENROUTER_API_KEY;
-  process.env.OPENROUTER_API_KEY = 'test-only-key';
+  const previousKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = 'test-only-key';
   t.after(() => {
-    if (previousKey === undefined) delete process.env.OPENROUTER_API_KEY;
-    else process.env.OPENROUTER_API_KEY = previousKey;
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousKey;
   });
 
   const app = express();
