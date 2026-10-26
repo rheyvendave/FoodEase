@@ -90,7 +90,7 @@ router.post('/', limitChatRequests, async (req, res, next) => {
       languageInstruction,
       `Available FoodEase menu (JSON): ${JSON.stringify(menu)}`
     ].join(' ');
-    const model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+    const model = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
     const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {

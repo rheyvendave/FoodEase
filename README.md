@@ -9,7 +9,7 @@ React + Vite frontend, Node.js + Express API, and MongoDB.
 
 To load the starter menu into an empty database, run `npm run seed:menu` from the `server` folder. The seed command skips the operation if any food items already exist.
 
-To enable Groq-powered Kain-Bot, set `GROQ_API_KEY` in the server environment. Keep the key on the backend only; never add it to the client or commit it. `GROQ_MODEL` optionally selects a Groq chat-completions model and defaults to `llama-3.3-70b-versatile`. Without a configured key, Kain-Bot continues to use its built-in menu-based answers.
+To enable Groq-powered Kain-Bot, set `GROQ_API_KEY` in the server environment. Keep the key on the backend only; never add it to the client or commit it. `GROQ_MODEL` optionally selects a Groq chat-completions model and defaults to `openai/gpt-oss-120b`. Without a configured key, Kain-Bot continues to use its built-in menu-based answers.
 
 This is a learning starter. Configure secure secrets before use and do not expose `.env` files.
 
