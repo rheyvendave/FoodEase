@@ -1,4 +1,3 @@
-const categories = ['Sulit Meals', 'Ulam', 'Merienda', 'Dessert'];
 const peso = value => `₱${Number(value || 0).toFixed(2)}`;
 
 function normalize(value) {
@@ -43,6 +42,16 @@ function findFood(question, menu) {
   return [...menu]
     .sort((first, second) => normalize(second.name).length - normalize(first.name).length)
     .find(food => query.includes(normalize(food.name)));
+}
+
+function getCategories(menu) {
+  return [...new Set(menu.map(food => food.category).filter(Boolean))]
+    .sort((first, second) => first.localeCompare(second));
+}
+
+function isDrink(food) {
+  return /\b(drinks?|beverages?|soft drinks?|inumin|inom|ilimnon|soda|juice|water|coffee|tea|milkshake)\b/i
+    .test(`${food.category} ${food.name} ${food.description}`);
 }
 
 function listMenu(menu, selectedCategories, language) {
@@ -100,7 +109,7 @@ function budgetAnswer(menu, budget, language) {
         `Walang available na pasok sa ${peso(budget)}. Ang pinakamurang option ay ${cheapest.name} sa ${peso(cheapest.price)}.`,
         `Walay available nga masulod sa ${peso(budget)}. Ang pinakabarato nga kapilian mao ang ${cheapest.name} sa ${peso(cheapest.price)}.`
       )
-      : listMenu(menu, categories, language);
+      : listMenu(menu, getCategories(menu), language);
   }
 
   return reply(
@@ -151,6 +160,17 @@ export function buildChatAnswer(question, requestedLanguage, menu, history = [])
   }
 
   if (/\b(drink|drinks|beverage|inumin|inom|ilumin)\b/.test(query)) {
+    const drinks = availableMenu.filter(isDrink);
+    if (drinks.length) {
+      const drinkCategories = [...new Set(drinks.map(food => food.category).filter(Boolean))];
+      return reply(
+        language,
+        `Here are the drinks currently listed on our menu:\n${listMenu(drinks, drinkCategories, language)}`,
+        `Narito ang mga inuming nakalista ngayon sa menu:\n${listMenu(drinks, drinkCategories, language)}`,
+        `Mao kini ang mga ilimnon nga naa karon sa menu:\n${listMenu(drinks, drinkCategories, language)}`
+      );
+    }
+
     return reply(
       language,
       'There are no drinks listed on the menu right now. I can suggest a dessert instead:\n' + listMenu(availableMenu, ['Dessert'], language),
@@ -192,18 +212,18 @@ export function buildChatAnswer(question, requestedLanguage, menu, history = [])
   if (/\b(price|cost|how much|presyo|magkano|pila|tagpila)\b/.test(query)) {
     return reply(
       language,
-      `Which dish would you like the price for? You can ask about a specific item or see the menu:\n${listMenu(availableMenu, categories, language)}`,
-      `Aling pagkain ang gusto mong malaman ang presyo? Itanong ang pangalan nito o tingnan ang menu:\n${listMenu(availableMenu, categories, language)}`,
-      `Unsa nga pagkaon ang gusto nimong mahibal-an ang presyo? Isulti ang ngalan o tan-awa ang menu:\n${listMenu(availableMenu, categories, language)}`
+      `Which dish would you like the price for? You can ask about a specific item or see the menu:\n${listMenu(availableMenu, getCategories(availableMenu), language)}`,
+      `Aling pagkain ang gusto mong malaman ang presyo? Itanong ang pangalan nito o tingnan ang menu:\n${listMenu(availableMenu, getCategories(availableMenu), language)}`,
+      `Unsa nga pagkaon ang gusto nimong mahibal-an ang presyo? Isulti ang ngalan o tan-awa ang menu:\n${listMenu(availableMenu, getCategories(availableMenu), language)}`
     );
   }
 
   if (/\b(menu|dish|ulam|food|available|special|favorite|pagkaon|putahe|pagkain|meron|mayroon|lamian|unsay|unsa nga pagkaon|anong pagkain|anong ulam)\b/.test(query)) {
-    const selectedCategory = categories.find(category => query.includes(normalize(category)))
+    const selectedCategory = getCategories(availableMenu).find(category => query.includes(normalize(category)))
       || (/\b(dessert|panghimagas)\b/.test(query) ? 'Dessert' : null)
       || (/\b(merienda|snack)\b/.test(query) ? 'Merienda' : null)
       || (/\b(ulam|main course|main dish)\b/.test(query) ? 'Ulam' : null);
-    return listMenu(availableMenu, selectedCategory ? [selectedCategory] : categories, language);
+    return listMenu(availableMenu, selectedCategory ? [selectedCategory] : getCategories(availableMenu), language);
   }
 
   if (/\b(delivery|deliver|pickup|pick up|take away|hatod|ihatid|padala|kuha)\b/.test(query)) {

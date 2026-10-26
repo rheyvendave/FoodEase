@@ -20,6 +20,23 @@ test('answers menu and dish price questions with current available items', () =>
   assert.doesNotMatch(buildChatAnswer('Show me the menu', 'en', menu), /Sold-out Meal/);
 });
 
+test('uses newly added menu categories and items in fallback replies', () => {
+  const liveMenu = [
+    ...menu,
+    { name: 'Mountain Dew 12 oz', category: 'Drinks', price: 25, description: 'Chilled soda.', available: true },
+    { name: 'Pepsi 12 oz', category: 'Drinks', price: 25, description: 'Chilled cola.', available: true },
+    { name: 'Unavailable Juice', category: 'Drinks', price: 30, description: '', available: false }
+  ];
+
+  const drinkAnswer = buildChatAnswer('What drinks are on the menu?', 'en', liveMenu);
+  assert.match(drinkAnswer, /Mountain Dew 12 oz ₱25\.00/);
+  assert.match(drinkAnswer, /Pepsi 12 oz ₱25\.00/);
+  assert.doesNotMatch(drinkAnswer, /Unavailable Juice/);
+  assert.doesNotMatch(drinkAnswer, /There are no drinks listed/);
+  assert.match(buildChatAnswer('How much is Pepsi 12 oz?', 'en', liveMenu), /₱25\.00/);
+  assert.match(buildChatAnswer('Show me the menu', 'en', liveMenu), /• Drinks:/);
+});
+
 test('builds accurate budget combinations without exceeding the budget', () => {
   const answer = buildChatAnswer('What can I get for ₱150?', 'en', menu);
   assert.match(answer, /Hotsilog \+ Turon — ₱140\.00/);
@@ -80,6 +97,45 @@ test('chat API answers from the menu when OpenAI is not configured', async t => 
   assert.equal(response.status, 200);
   assert.match(result.answer, /Leche Flan/);
   assert.doesNotMatch(result.answer, /OpenAI|AI reply unavailable/);
+});
+
+test('chat API includes menu items added after initial catalog setup', async t => {
+  const liveMenu = [
+    ...menu,
+    { name: 'Mountain Dew 12 oz', category: 'Drinks', price: 25, description: 'Chilled soda.', available: true },
+    { name: 'Pepsi 12 oz', category: 'Drinks', price: 25, description: 'Chilled cola.', available: true }
+  ];
+  t.mock.method(Food, 'find', () => ({
+    select() { return this; },
+    sort() { return this; },
+    limit() { return this; },
+    lean: async () => liveMenu
+  }));
+  const previousKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = '';
+  t.after(() => {
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousKey;
+  });
+
+  const app = express();
+  app.use(express.json());
+  app.use('/chat', chatRoutes);
+  const server = app.listen(0, '127.0.0.1');
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  await new Promise(resolve => server.once('listening', resolve));
+
+  const response = await fetch(`http://127.0.0.1:${server.address().port}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question: 'What drinks are on the menu?', language: 'en' })
+  });
+  const result = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.match(result.answer, /Mountain Dew 12 oz ₱25\.00/);
+  assert.match(result.answer, /Pepsi 12 oz ₱25\.00/);
+  assert.doesNotMatch(result.answer, /There are no drinks listed/);
 });
 
 test('chat API sends requests to OpenAI and returns its response', async t => {
