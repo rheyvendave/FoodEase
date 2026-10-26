@@ -69,7 +69,7 @@ router.post('/', limitChatRequests, async (req, res, next) => {
     answer: buildChatAnswer(question.trim(), language, menu, safeHistory)
   });
 
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.GROQ_API_KEY) {
     return fallback();
   }
 
@@ -90,12 +90,12 @@ router.post('/', limitChatRequests, async (req, res, next) => {
       languageInstruction,
       `Available FoodEase menu (JSON): ${JSON.stringify(menu)}`
     ].join(' ');
-    const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const model = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
+        Authorization: `Bearer ${process.env.GROQ_API_KEY}`
       },
       body: JSON.stringify({
         model,
@@ -111,7 +111,7 @@ router.post('/', limitChatRequests, async (req, res, next) => {
     });
 
     if (!response.ok) {
-      console.error(`OpenAI API returned HTTP ${response.status}.`);
+      console.error(`Groq API returned HTTP ${response.status}.`);
       return fallback();
     }
 
@@ -123,13 +123,13 @@ router.post('/', limitChatRequests, async (req, res, next) => {
         ? content.map(part => typeof part === 'string' ? part : part?.text || '').join('').trim()
         : '';
     if (!answer) {
-      console.error('OpenAI API returned no text for a chat response.');
+      console.error('Groq API returned no text for a chat response.');
       return fallback();
     }
 
     return res.json({ answer });
   } catch (error) {
-    console.error(`OpenAI chat request failed (${error.name || 'unknown error'}); returning the menu assistant response.`);
+    console.error(`Groq chat request failed (${error.name || 'unknown error'}); returning the menu assistant response.`);
     return fallback();
   }
 });

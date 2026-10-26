@@ -71,18 +71,18 @@ test('provides useful shop information without an AI service', () => {
   assert.match(buildChatAnswer('Do you deliver?', 'en', menu), /Pickup and delivery are available/);
 });
 
-test('chat API answers from the menu when OpenAI is not configured', async t => {
+test('chat API answers from the menu when Groq is not configured', async t => {
   t.mock.method(Food, 'find', () => ({
     select() { return this; },
     sort() { return this; },
     limit() { return this; },
     lean: async () => menu
   }));
-  const previousKey = process.env.OPENAI_API_KEY;
-  process.env.OPENAI_API_KEY = '';
+  const previousKey = process.env.GROQ_API_KEY;
+  process.env.GROQ_API_KEY = '';
   t.after(() => {
-    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
-    else process.env.OPENAI_API_KEY = previousKey;
+    if (previousKey === undefined) delete process.env.GROQ_API_KEY;
+    else process.env.GROQ_API_KEY = previousKey;
   });
 
   const app = express();
@@ -101,7 +101,7 @@ test('chat API answers from the menu when OpenAI is not configured', async t => 
 
   assert.equal(response.status, 200);
   assert.match(result.answer, /Leche Flan/);
-  assert.doesNotMatch(result.answer, /OpenAI|AI reply unavailable/);
+  assert.doesNotMatch(result.answer, /Groq|AI reply unavailable/);
 });
 
 test('chat API includes menu items added after initial catalog setup', async t => {
@@ -117,11 +117,11 @@ test('chat API includes menu items added after initial catalog setup', async t =
     limit() { return this; },
     lean: async () => liveMenu
   }));
-  const previousKey = process.env.OPENAI_API_KEY;
-  process.env.OPENAI_API_KEY = '';
+  const previousKey = process.env.GROQ_API_KEY;
+  process.env.GROQ_API_KEY = '';
   t.after(() => {
-    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
-    else process.env.OPENAI_API_KEY = previousKey;
+    if (previousKey === undefined) delete process.env.GROQ_API_KEY;
+    else process.env.GROQ_API_KEY = previousKey;
   });
 
   const app = express();
@@ -153,32 +153,32 @@ test('chat API includes menu items added after initial catalog setup', async t =
   assert.match(categoryResult.answer, /Pork Adobo Bowl ₱90\.00/);
 });
 
-test('chat API sends requests to OpenAI and returns its response', async t => {
+test('chat API sends requests to Groq and returns its response', async t => {
   t.mock.method(Food, 'find', () => ({
     select() { return this; },
     sort() { return this; },
     limit() { return this; },
     lean: async () => menu
   }));
-  const previousKey = process.env.OPENAI_API_KEY;
-  const previousModel = process.env.OPENAI_MODEL;
-  process.env.OPENAI_API_KEY = 'test-only-key';
-  process.env.OPENAI_MODEL = 'gpt-test-model';
+  const previousKey = process.env.GROQ_API_KEY;
+  const previousModel = process.env.GROQ_MODEL;
+  process.env.GROQ_API_KEY = 'test-only-key';
+  process.env.GROQ_MODEL = 'llama-test-model';
   t.after(() => {
-    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
-    else process.env.OPENAI_API_KEY = previousKey;
-    if (previousModel === undefined) delete process.env.OPENAI_MODEL;
-    else process.env.OPENAI_MODEL = previousModel;
+    if (previousKey === undefined) delete process.env.GROQ_API_KEY;
+    else process.env.GROQ_API_KEY = previousKey;
+    if (previousModel === undefined) delete process.env.GROQ_MODEL;
+    else process.env.GROQ_MODEL = previousModel;
   });
   const originalFetch = globalThis.fetch.bind(globalThis);
   t.mock.method(globalThis, 'fetch', async (url, options) => {
-    if (!String(url).startsWith('https://api.openai.com/')) {
+    if (!String(url).startsWith('https://api.groq.com/')) {
       return originalFetch(url, options);
     }
-    assert.equal(String(url), 'https://api.openai.com/v1/chat/completions');
+    assert.equal(String(url), 'https://api.groq.com/openai/v1/chat/completions');
     assert.equal(options.headers.Authorization, 'Bearer test-only-key');
     const body = JSON.parse(options.body);
-    assert.equal(body.model, 'gpt-test-model');
+    assert.equal(body.model, 'llama-test-model');
     assert.equal(body.messages.at(-1).content, 'What can I get for ₱150?');
     const instructions = body.messages[0].content;
     assert.match(instructions, /whatever customers ask, including general questions/);
@@ -205,7 +205,7 @@ test('chat API sends requests to OpenAI and returns its response', async t => {
   assert.equal(result.answer, 'Hotsilog and Turon.');
 });
 
-test('chat API falls back when OpenAI returns an error', async t => {
+test('chat API falls back when Groq returns an error', async t => {
   t.mock.method(Food, 'find', () => ({
     select() { return this; },
     sort() { return this; },
@@ -214,16 +214,16 @@ test('chat API falls back when OpenAI returns an error', async t => {
   }));
   const originalFetch = globalThis.fetch.bind(globalThis);
   t.mock.method(globalThis, 'fetch', async (url, options) => {
-    if (String(url).startsWith('https://api.openai.com/')) {
+    if (String(url).startsWith('https://api.groq.com/')) {
       return new Response('', { status: 401 });
     }
     return originalFetch(url, options);
   });
-  const previousKey = process.env.OPENAI_API_KEY;
-  process.env.OPENAI_API_KEY = 'test-only-key';
+  const previousKey = process.env.GROQ_API_KEY;
+  process.env.GROQ_API_KEY = 'test-only-key';
   t.after(() => {
-    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
-    else process.env.OPENAI_API_KEY = previousKey;
+    if (previousKey === undefined) delete process.env.GROQ_API_KEY;
+    else process.env.GROQ_API_KEY = previousKey;
   });
 
   const app = express();

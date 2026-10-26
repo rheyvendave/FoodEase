@@ -9,7 +9,7 @@ React + Vite frontend, Node.js + Express API, and MongoDB.
 
 To load the starter menu into an empty database, run `npm run seed:menu` from the `server` folder. The seed command skips the operation if any food items already exist.
 
-To enable OpenAI-powered Kain-Bot, set `OPENAI_API_KEY` in the server environment. Keep the key on the backend only; never add it to the client or commit it. `OPENAI_MODEL` optionally selects an OpenAI chat-completions model and defaults to `gpt-4o-mini`. Without a configured key, Kain-Bot continues to use its built-in menu-based answers.
+To enable Groq-powered Kain-Bot, set `GROQ_API_KEY` in the server environment. Keep the key on the backend only; never add it to the client or commit it. `GROQ_MODEL` optionally selects a Groq chat-completions model and defaults to `llama-3.3-70b-versatile`. Without a configured key, Kain-Bot continues to use its built-in menu-based answers.
 
 This is a learning starter. Configure secure secrets before use and do not expose `.env` files.
 
@@ -22,7 +22,7 @@ Deploy the frontend and API as two separate Vercel projects from this repository
    - `JWT_SECRET`: a long, randomly generated secret.
    - `ADMIN_USERNAME` and `ADMIN_PASSWORD`: your production admin credentials.
    - `CLIENT_ORIGIN`: the exact deployed frontend origin, such as `https://your-store.vercel.app`. Multiple comma-separated origins are supported.
-   - `OPENAI_API_KEY` (optional) and `OPENAI_MODEL` (optional).
+   - `GROQ_API_KEY` (optional) and `GROQ_MODEL` (optional).
 2. Deploy the API project. Its Vercel URL is the API host.
 3. Create a second Vercel project with the project root set to `client`. Set `VITE_API_URL` to the deployed API URL plus `/api`, for example `https://your-api.vercel.app/api`, then deploy the frontend.
 4. Add the Atlas database user and allow the deployed API to reach the cluster in Atlas Network Access. Use a strong, dedicated database password. If the Atlas network policy requires `0.0.0.0/0` for Vercel access, use a least-privilege database user and strong credentials.
