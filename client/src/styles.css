@@ -6590,6 +6590,69 @@ footer {
   margin-top: 10px;
 }
 
+.admin-settings-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-settings-heading .admin-primary-button {
+  min-height: 32px;
+}
+
+.admin-profile-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.admin-profile-form label {
+  display: grid;
+  gap: 5px;
+  color: #526257;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.admin-profile-form input,
+.admin-profile-form textarea {
+  width: 100%;
+  min-height: 38px;
+  padding: 9px 10px;
+  border: 1px solid #dfe6df;
+  border-radius: 6px;
+  color: #314238;
+  background: #fff;
+  font: 11px 'DM Sans', Arial, sans-serif;
+}
+
+.admin-profile-form textarea {
+  min-height: 64px;
+  resize: vertical;
+}
+
+.admin-profile-form input:focus,
+.admin-profile-form textarea:focus {
+  border-color: #69a67e;
+  outline: 3px solid rgb(59 134 86 / 12%);
+}
+
+.admin-profile-form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-profile-form-actions .admin-secondary-button {
+  margin-top: 0;
+}
+
+.admin-profile-form button:disabled {
+  cursor: wait;
+  opacity: .65;
+}
+
 @media (max-width: 760px) {
   .admin-workspace-overlay {
     padding: 8px;

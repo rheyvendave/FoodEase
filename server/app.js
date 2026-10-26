@@ -7,6 +7,7 @@ import foodRoutes from './routes/foodRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
+import profileRoutes from './routes/profileRoutes.js';
 
 const app = express();
 const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:5173')
@@ -36,6 +37,7 @@ app.use('/api/foods', foodRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/profile', profileRoutes);
 app.use((err, _req, res, _next) => {
   console.error(err);
   res.status(err.status || 500).json({ message: err.message || 'Server error' });

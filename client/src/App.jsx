@@ -36,6 +36,12 @@ const menuItems = [
 
 const foodPhotos = menuItems.map(item => item.imageUrl);
 const sample = menuItems.map((food, index) => ({ ...food, imageUrl: food.imageUrl || foodPhotos[index] }));
+const defaultStoreProfile = {
+  branchName: 'FoodEase · Mambajao Branch',
+  address: 'Mambajao, Maasin City, Southern Leyte',
+  businessHours: 'Monday–Saturday · 8:30 AM–10:00 PM',
+  phone: '0909 989 2812'
+};
 
 const peso = value => '₱' + Number(value || 0).toFixed(2);
 const empty = { name: '', description: '', category: 'Main Course', price: '', imageUrl: '', available: true };
@@ -97,6 +103,10 @@ export default function App() {
   const [orderDateFrom, setOrderDateFrom] = useState('');
   const [orderDateTo, setOrderDateTo] = useState('');
   const [adminSidebarCollapsed, setAdminSidebarCollapsed] = useState(false);
+  const [storeProfile, setStoreProfile] = useState(defaultStoreProfile);
+  const [profileDraft, setProfileDraft] = useState(defaultStoreProfile);
+  const [profileEditing, setProfileEditing] = useState(false);
+  const [profileSaving, setProfileSaving] = useState(false);
   const [form, setForm] = useState(empty);
   const [edit, setEdit] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -467,6 +477,35 @@ const availableFoods = foods.filter(food => food.available);
     }
   }
 
+  async function loadStoreProfile() {
+    try {
+      const profile = await api('/profile', {}, token);
+      setStoreProfile(profile);
+      setProfileDraft(profile);
+    } catch (error) {
+      setMsg(error.message);
+    }
+  }
+
+  async function saveStoreProfile(event) {
+    event.preventDefault();
+    setProfileSaving(true);
+    try {
+      const profile = await api('/profile', {
+        method: 'PUT',
+        body: JSON.stringify(profileDraft)
+      }, token);
+      setStoreProfile(profile);
+      setProfileDraft(profile);
+      setProfileEditing(false);
+      setMsg('Store profile saved');
+    } catch (error) {
+      setMsg(error.message);
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
   async function status(order, nextStatus) {
     try {
       await api('/orders/' + order._id + '/status', {
@@ -831,6 +870,7 @@ const availableFoods = foods.filter(food => food.available);
                       onClick={() => {
                         setTab(value);
                         if (['overview', 'orders', 'customers'].includes(value)) loadOrders();
+                        if (value === 'settings') loadStoreProfile();
                       }}
                     >
                       <span aria-hidden="true">{icon}</span>
@@ -1060,7 +1100,29 @@ const availableFoods = foods.filter(food => food.available);
                     {tab === 'settings' && (
                       <>
                         <div className="admin-page-heading"><div><span className="admin-section-kicker">WORKSPACE</span><h2 id="admin-title">Settings</h2><p>Manage your FoodEase owner session and store information.</p></div></div>
-                        <section className="admin-section-card admin-settings-card"><span className="admin-section-kicker">STORE PROFILE</span><h3>FoodEase · Mambajao Branch</h3><p>Mambajao, Maasin City, Southern Leyte</p><p>Monday–Saturday · 8:30 AM–10:00 PM</p><p>Contact · 0909 989 2812</p><button className="admin-secondary-button" onClick={logout}>↪&nbsp; Log out of admin</button></section>
+                        <section className="admin-section-card admin-settings-card">
+                          <div className="admin-settings-heading"><span className="admin-section-kicker">STORE PROFILE</span>{!profileEditing && <button className="admin-primary-button" onClick={() => { setProfileDraft(storeProfile); setProfileEditing(true); }}>✎&nbsp; Edit profile</button>}</div>
+                          {profileEditing ? (
+                            <form className="admin-profile-form" onSubmit={saveStoreProfile}>
+                              <label>Branch name<input required maxLength="100" value={profileDraft.branchName} onChange={event => setProfileDraft({ ...profileDraft, branchName: event.target.value })} /></label>
+                              <label>Address<textarea required maxLength="250" value={profileDraft.address} onChange={event => setProfileDraft({ ...profileDraft, address: event.target.value })} /></label>
+                              <label>Business hours<input required maxLength="120" value={profileDraft.businessHours} onChange={event => setProfileDraft({ ...profileDraft, businessHours: event.target.value })} /></label>
+                              <label>Contact number<input required maxLength="40" value={profileDraft.phone} onChange={event => setProfileDraft({ ...profileDraft, phone: event.target.value })} /></label>
+                              <div className="admin-profile-form-actions">
+                                <button className="admin-primary-button" type="submit" disabled={profileSaving}>{profileSaving ? 'Saving...' : 'Save profile'}</button>
+                                <button className="admin-secondary-button" type="button" disabled={profileSaving} onClick={() => { setProfileDraft(storeProfile); setProfileEditing(false); }}>Cancel</button>
+                              </div>
+                            </form>
+                          ) : (
+                            <>
+                              <h3>{storeProfile.branchName}</h3>
+                              <p>{storeProfile.address}</p>
+                              <p>{storeProfile.businessHours}</p>
+                              <p>Contact · {storeProfile.phone}</p>
+                              <button className="admin-secondary-button" onClick={logout}>↪&nbsp; Log out of admin</button>
+                            </>
+                          )}
+                        </section>
                       </>
                     )}
                   </div>
