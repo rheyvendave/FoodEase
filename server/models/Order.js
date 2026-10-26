@@ -8,6 +8,7 @@ const item = new mongoose.Schema(
     },
     name: String,
     price: Number,
+    imageUrl: { type: String, default: "" },
     quantity: { type: Number, min: 1, required: true },
   },
   { _id: false },

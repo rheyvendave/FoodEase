@@ -6408,6 +6408,64 @@ footer {
   background: #edf2eb;
 }
 
+.admin-order-customer {
+  min-width: 185px !important;
+  max-width: 280px;
+}
+
+.admin-order-customer > b {
+  display: block;
+}
+
+.admin-table td small.admin-order-address,
+.admin-table td.admin-order-address {
+  max-width: 280px;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.admin-order-items {
+  display: flex;
+  min-width: 170px;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.admin-order-item {
+  display: flex;
+  min-width: 145px;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-order-item img {
+  display: block;
+  width: 44px;
+  height: 40px;
+  flex: 0 0 44px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #edf2eb;
+}
+
+.admin-order-item > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.admin-order-item > span b {
+  overflow-wrap: anywhere;
+}
+
+.admin-order-item > span small {
+  max-width: none;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+}
+
 .admin-category-pill,
 .admin-payment-pill {
   display: inline-block;
@@ -6476,11 +6534,11 @@ footer {
 }
 
 .admin-orders-table td:nth-child(2) {
-  min-width: 132px;
+  min-width: 185px;
 }
 
 .admin-orders-table td:nth-child(3) {
-  min-width: 145px;
+  min-width: 175px;
 }
 
 .admin-status-select {

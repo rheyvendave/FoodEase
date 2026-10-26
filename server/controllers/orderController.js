@@ -33,7 +33,13 @@ export async function createOrder(req, res, next) {
         return res
           .status(400)
           .json({ message: "Food unavailable or quantity invalid." });
-      clean.push({ foodId: f._id, name: f.name, price: f.price, quantity: q });
+      clean.push({
+        foodId: f._id,
+        name: f.name,
+        price: f.price,
+        imageUrl: f.imageUrl,
+        quantity: q,
+      });
     }
     const total = clean.reduce((s, i) => s + i.price * i.quantity, 0);
     const order = await Order.create({
@@ -52,7 +58,33 @@ export async function createOrder(req, res, next) {
 }
 export async function listOrders(_req, res, next) {
   try {
-    res.json(await Order.find().sort({ createdAt: -1 }).limit(200));
+    const orders = await Order.find().sort({ createdAt: -1 }).limit(200);
+    const foodIds = [
+      ...new Set(
+        orders.flatMap((order) =>
+          order.items
+            .filter((item) => !item.imageUrl && item.foodId)
+            .map((item) => String(item.foodId)),
+        ),
+      ),
+    ];
+    const foods = foodIds.length
+      ? await Food.find({ _id: { $in: foodIds } }).select("_id imageUrl")
+      : [];
+    const imageByFoodId = new Map(
+      foods.map((food) => [String(food._id), food.imageUrl]),
+    );
+
+    res.json(
+      orders.map((order) => {
+        const data = order.toObject();
+        data.items = data.items.map((item) => ({
+          ...item,
+          imageUrl: item.imageUrl || imageByFoodId.get(String(item.foodId)) || "",
+        }));
+        return data;
+      }),
+    );
   } catch (e) {
     next(e);
   }

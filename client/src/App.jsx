@@ -122,6 +122,10 @@ export default function App() {
       && (!orderDateTo || orderDate <= orderDateTo);
     return matchesSearch && matchesStatus && matchesPayment && matchesDate;
   }), [orders, orderSearch, orderStatusFilter, orderPaymentFilter, orderDateFrom, orderDateTo]);
+  const getOrderItemImage = item => item.imageUrl
+    || foods.find(food => String(food._id) === String(item.foodId))?.imageUrl
+    || menuItems.find(food => food.name.toLowerCase() === String(item.name || '').toLowerCase())?.imageUrl
+    || foodPhotos[0];
 
   async function load() {
     try {
@@ -899,8 +903,8 @@ const availableFoods = foods.filter(food => food.available);
                                 <tbody>{orders.slice(0, 5).map(order => (
                                   <tr key={order._id}>
                                     <td><b>#{order._id.slice(-6).toUpperCase()}</b><small>{new Date(order.createdAt).toLocaleDateString()}</small></td>
-                                    <td>{order.customerName}<small>{order.phone}</small></td>
-                                    <td>{order.items.map(item => `${item.name} × ${item.quantity}`).join(', ')}</td>
+                                    <td className="admin-order-customer"><b>{order.customerName}</b><small>{order.phone}</small>{order.fulfillment === 'delivery' && order.address && <small className="admin-order-address">{order.address}</small>}<small>{order.fulfillment === 'delivery' ? 'Delivery' : 'Pickup'}</small></td>
+                                    <td><div className="admin-order-items">{order.items.map((item, index) => <div className="admin-order-item" key={`${item.foodId || item.name}-${index}`}><img src={getOrderItemImage(item)} alt={item.name} /><span><b>{item.name}</b><small>Qty {item.quantity} · {peso(item.price)}</small></span></div>)}</div></td>
                                     <td><b>{peso(order.total)}</b></td>
                                     <td><span className={`admin-status status-${order.status.toLowerCase().replaceAll(' ', '-')}`}>{order.status}</span></td>
                                   </tr>
@@ -1016,8 +1020,8 @@ const availableFoods = foods.filter(food => food.available);
                             <thead><tr><th>Order #</th><th>Customer</th><th>Items</th><th>Total amount</th><th>Payment method</th><th>Status</th><th>Order date</th></tr></thead>
                             <tbody>{filteredOrders.map(order => <tr key={order._id}>
                               <td><b>#{order._id.slice(-6).toUpperCase()}</b><small>{order.fulfillment}</small></td>
-                              <td>{order.customerName}<small>{order.phone}{order.address ? ` · ${order.address}` : ''}</small></td>
-                              <td>{order.items.map(item => `${item.name} × ${item.quantity}`).join(', ')}</td>
+                              <td className="admin-order-customer"><b>{order.customerName}</b><small>{order.phone}</small>{order.fulfillment === 'delivery' && order.address ? <small className="admin-order-address"><strong>Address:</strong> {order.address}</small> : <small>{order.fulfillment === 'delivery' ? 'Delivery address not provided' : 'Pickup order'}</small>}</td>
+                              <td><div className="admin-order-items">{order.items.map((item, index) => <div className="admin-order-item" key={`${item.foodId || item.name}-${index}`}><img src={getOrderItemImage(item)} alt={item.name} /><span><b>{item.name}</b><small>Qty {item.quantity} · {peso(item.price)}</small></span></div>)}</div></td>
                               <td><b>{peso(order.total)}</b></td>
                               <td><span className="admin-payment-pill">{(order.paymentMethod || 'cash').charAt(0).toUpperCase() + (order.paymentMethod || 'cash').slice(1)}</span></td>
                               <td><select className={`admin-status-select status-${order.status.toLowerCase().replaceAll(' ', '-')}`} aria-label={`Update order ${order._id.slice(-6)} status`} value={order.status} onChange={event => status(order, event.target.value)}>
@@ -1036,16 +1040,17 @@ const availableFoods = foods.filter(food => food.available);
                         <section className="admin-section-card">
                           <div className="admin-section-heading"><div><span className="admin-section-kicker">ORDER HISTORY</span><h3>Customers</h3></div></div>
                           {orders.length ? <div className="admin-table-wrap"><table className="admin-table">
-                            <thead><tr><th>Customer</th><th>Phone</th><th>Orders</th><th>Total spent</th><th>Last order</th></tr></thead>
+                            <thead><tr><th>Customer</th><th>Phone</th><th>Delivery address</th><th>Orders</th><th>Total spent</th><th>Last order</th></tr></thead>
                             <tbody>{[...orders.reduce((customers, order) => {
                               const key = order.phone;
                               const customer = customers.get(key) || { ...order, orderCount: 0, spent: 0 };
+                              if (order.address && !customer.address) customer.address = order.address;
                               customer.orderCount += 1;
                               customer.spent += Number(order.total);
                               customers.set(key, customer);
                               return customers;
                             }, new Map()).values()].map(customer => <tr key={customer.phone}>
-                              <td><b>{customer.customerName}</b></td><td>{customer.phone}</td><td>{customer.orderCount}</td><td><b>{peso(customer.spent)}</b></td><td>{new Date(customer.createdAt).toLocaleDateString()}</td>
+                              <td><b>{customer.customerName}</b></td><td>{customer.phone}</td><td className="admin-order-address">{customer.address || 'Pickup / no delivery address'}</td><td>{customer.orderCount}</td><td><b>{peso(customer.spent)}</b></td><td>{new Date(customer.createdAt).toLocaleDateString()}</td>
                             </tr>)}</tbody>
                           </table></div> : <p className="admin-empty-state">Customer details will appear after the first order.</p>}
                         </section>
