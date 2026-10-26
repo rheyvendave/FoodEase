@@ -6113,10 +6113,16 @@ footer {
 }
 
 .admin-banner-art {
-  margin-right: 7%;
-  font-size: clamp(70px, 10vw, 118px);
-  filter: drop-shadow(0 8px 9px rgb(35 74 44 / 18%));
-  transform: rotate(-8deg);
+  position: absolute;
+  top: 50%;
+  right: 7%;
+  width: 140px;
+  height: 140px;
+  border: 5px solid rgb(255 255 255 / 78%);
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 8px 18px rgb(35 74 44 / 18%);
+  transform: translateY(-50%);
 }
 
 .admin-banner-actions {
@@ -6766,10 +6772,14 @@ footer {
 
   .admin-banner-art {
     position: absolute;
-    right: 1px;
-    bottom: 4px;
+    top: auto;
+    right: 8px;
+    bottom: 5px;
+    width: 100px;
+    height: 100px;
     margin: 0;
-    opacity: .24;
+    opacity: .45;
+    transform: none;
   }
 
   .admin-section-card,

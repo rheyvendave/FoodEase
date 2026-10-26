@@ -918,7 +918,11 @@ const availableFoods = foods.filter(food => food.available);
                               <button onClick={() => { setTab('orders'); loadOrders(); }}>▤&nbsp; Orders</button>
                             </div>
                           </div>
-                          <span className="admin-banner-art" aria-hidden="true">🍽️</span>
+                          <img
+                            className="admin-banner-art"
+                            src={foods.find(food => food.name.toLowerCase().includes('pork adobo'))?.imageUrl || menuItems.find(food => food.name === 'Pork Adobo').imageUrl}
+                            alt="Pork Adobo"
+                          />
                         </section>
 
                         <div className="admin-stat-grid">
