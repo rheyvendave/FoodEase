@@ -180,6 +180,10 @@ test('chat API sends requests to OpenAI and returns its response', async t => {
     const body = JSON.parse(options.body);
     assert.equal(body.model, 'gpt-test-model');
     assert.equal(body.messages.at(-1).content, 'What can I get for ₱150?');
+    const instructions = body.messages[0].content;
+    assert.match(instructions, /whatever customers ask, including general questions/);
+    assert.match(instructions, /Tailor suggestions to the customer’s stated taste, category, or budget/);
+    assert.match(instructions, /Never invent food names, prices, drinks, ingredients, or availability/);
     return Response.json({ choices: [{ message: { content: 'Hotsilog and Turon.' } }] });
   });
 
