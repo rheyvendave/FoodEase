@@ -51,7 +51,7 @@ function getCategories(menu) {
 
 function isDrink(food) {
   return /\b(drinks?|beverages?|soft drinks?|inumin|inom|ilimnon|soda|juice|water|coffee|tea|milkshake)\b/i
-    .test(`${food.category} ${food.name} ${food.description}`);
+    .test(food.category);
 }
 
 function listMenu(menu, selectedCategories, language) {

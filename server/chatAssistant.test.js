@@ -32,6 +32,7 @@ test('uses newly added menu categories and items in fallback replies', () => {
   assert.match(drinkAnswer, /Mountain Dew 12 oz ₱25\.00/);
   assert.match(drinkAnswer, /Pepsi 12 oz ₱25\.00/);
   assert.doesNotMatch(drinkAnswer, /Unavailable Juice/);
+  assert.doesNotMatch(drinkAnswer, /Tiramisu/);
   assert.doesNotMatch(drinkAnswer, /There are no drinks listed/);
   assert.match(buildChatAnswer('How much is Pepsi 12 oz?', 'en', liveMenu), /₱25\.00/);
   assert.match(buildChatAnswer('Show me the menu', 'en', liveMenu), /• Drinks:/);
