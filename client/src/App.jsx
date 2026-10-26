@@ -421,6 +421,7 @@ const availableFoods = foods.filter(food => food.available);
 
   async function login(event) {
     event.preventDefault();
+    setAdminLoginNotice('');
     try {
       const result = await api('/auth/login', { method: 'POST', body: JSON.stringify(credentials) });
       setToken(result.token);
@@ -438,7 +439,9 @@ const availableFoods = foods.filter(food => food.available);
       await Promise.all([load(), loadOrders(result.token)]);
       setMsg('Admin signed in');
     } catch (error) {
-      setMsg(error.message);
+      setAdminLoginNotice(error.message === 'Invalid username or password.'
+        ? 'Wrong username or password. Please check both and try again.'
+        : error.message);
     }
   }
 
@@ -794,13 +797,13 @@ const availableFoods = foods.filter(food => food.available);
                     <label>Username
                       <span className="login-input-wrap">
                         <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m4 7 8 6 8-6" /></svg>
-                        <input autoComplete="username" placeholder="Username" required value={credentials.username} onChange={event => setCredentials({ ...credentials, username: event.target.value })} />
+                        <input autoComplete="username" placeholder="Username" required value={credentials.username} onChange={event => { setCredentials({ ...credentials, username: event.target.value }); setAdminLoginNotice(''); }} />
                       </span>
                     </label>
                     <label>Password
                       <span className="password-input-wrap">
                         <svg className="password-field-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2" /><path d="M8 10V7a4 4 0 1 1 8 0v3" /></svg>
-                        <input type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder="Password" required value={credentials.password} onChange={event => setCredentials({ ...credentials, password: event.target.value })} />
+                        <input type={showPassword ? 'text' : 'password'} autoComplete="current-password" placeholder="Password" required value={credentials.password} onChange={event => { setCredentials({ ...credentials, password: event.target.value }); setAdminLoginNotice(''); }} />
                         <button
                           className="password-visibility-toggle"
                           type="button"
@@ -843,7 +846,7 @@ const availableFoods = foods.filter(food => food.available);
                       </label>
                       <button className="forgot-password-link" type="button" onClick={() => setAdminLoginNotice('Password reset is not available here. Please contact the FoodEase administrator.')}>Forgot password?</button>
                     </div>
-                    {adminLoginNotice && <p className="admin-login-notice" role="status">{adminLoginNotice}</p>}
+                    {adminLoginNotice && <p className="admin-login-notice" role="alert">{adminLoginNotice}</p>}
                     <button className="cta full"><span aria-hidden="true">→</span> Sign in</button>
                   </form>
                   <span className="admin-login-secure">Secure access for FoodEase owners</span>
