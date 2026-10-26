@@ -86,6 +86,7 @@ export default function App() {
   const [customer, setCustomer] = useState({ customerName: '', phone: '', fulfillment: 'pickup', address: '' });
   const [admin, setAdmin] = useState(false);
   const [token, setToken] = useState(sessionStorage.getItem('food-token') || '');
+  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('food-theme') === 'dark');
   const [rememberLogin, setRememberLogin] = useState(() => localStorage.getItem('food-admin-remember') === 'true');
   const [credentials, setCredentials] = useState(() => ({
     username: localStorage.getItem('food-admin-username') || '',
@@ -529,6 +530,14 @@ const availableFoods = foods.filter(food => food.available);
     load();
   }
 
+  function toggleTheme() {
+    setDarkMode(current => {
+      const next = !current;
+      localStorage.setItem('food-theme', next ? 'dark' : 'light');
+      return next;
+    });
+  }
+
   function showPhotoFallback(event) {
     event.currentTarget.hidden = true;
     const fallback = event.currentTarget.nextElementSibling;
@@ -536,12 +545,15 @@ const availableFoods = foods.filter(food => food.available);
   }
 
   return (
-    <div className="shell" id="top">
+    <div className={`shell${darkMode ? ' theme-dark' : ''}`} id="top">
       <header className="site-header">
         <a className="brand" href="#top" aria-label="FoodEase home">
           <img className="brand-logo" src="/foodease-logo.png" alt="" />
         </a>
         <div className="mobile-actions">
+          <button className="theme-toggle mobile-theme-toggle" type="button" onClick={toggleTheme} aria-label={`Switch to ${darkMode ? 'light' : 'dark'} mode`} aria-pressed={darkMode}>
+            <span aria-hidden="true">{darkMode ? '☀' : '☾'}</span>
+          </button>
           <button className="mobile-cart" aria-label={`Open cart with ${cartCount} items`} onClick={() => setCheckout(true)}>
             <span aria-hidden="true">🛒</span><small>{cartCount}</small>
           </button>
@@ -559,6 +571,9 @@ const availableFoods = foods.filter(food => food.available);
           <a className="active" href="#menu" onClick={() => setMobileMenuOpen(false)}>Menu</a>
           <a href="#sulit-meals" onClick={() => setMobileMenuOpen(false)}>Sulit-Meals</a>
           <a href="#contact" onClick={() => setMobileMenuOpen(false)}>Contact</a>
+          <button className="theme-toggle desktop-theme-toggle" type="button" onClick={toggleTheme} aria-label={`Switch to ${darkMode ? 'light' : 'dark'} mode`} aria-pressed={darkMode}>
+            <span aria-hidden="true">{darkMode ? '☀' : '☾'}</span>{darkMode ? 'Light mode' : 'Dark mode'}
+          </button>
           <button className="admin-link" onClick={() => { setMobileMenuOpen(false); setAdmin(true); }}>{token ? 'Dashboard' : 'Admin'}</button>
           <button className="cart-icon" aria-label={`Open cart with ${cartCount} items`} onClick={() => { setMobileMenuOpen(false); setCheckout(true); }}>
             <span aria-hidden="true">🛒</span><small>{cartCount}</small>
@@ -1013,7 +1028,7 @@ const availableFoods = foods.filter(food => food.available);
                                 && (adminCategory === 'All categories' || food.category === adminCategory)
                               ).map(food => (
                                 <tr key={food._id}>
-                                  <td><img className="admin-food-thumbnail" src={food.imageUrl || foodPhotos[0]} alt="" onError={showPhotoFallback} /><span className="photo-fallback" hidden>🍽️</span></td>
+                                  <td><div className="admin-food-image"><img className="admin-food-thumbnail" src={food.imageUrl || foodPhotos[0]} alt="" onError={showPhotoFallback} /><span className="photo-fallback" hidden>🍽️</span></div></td>
                                   <td><b>{food.name}</b><small>{food.description}</small></td>
                                   <td><span className="admin-category-pill">{food.category}</span></td>
                                   <td><b>{peso(food.price)}</b></td>
