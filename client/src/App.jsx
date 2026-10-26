@@ -262,6 +262,14 @@ const availableFoods = foods.filter(food => food.available);
   function getChatAnswer(question) {
     const query = question.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s₱]/g, ' ');
     const language = chatLanguage === 'auto' ? detectChatLanguage(question) : chatLanguage;
+    const categories = [...new Set(availableFoods.map(food => food.category).filter(Boolean))];
+    const queryWords = query.split(/\s+/);
+    const requestedCategory = categories.find(category => category
+      .toLowerCase()
+      .split(/\s+/)
+      .every(categoryWord => queryWords.some(word =>
+        word === categoryWord || word === `${categoryWord}s` || categoryWord === `${word}s`
+      )));
     const matchedFood = foods.find(food => query.includes(food.name.toLowerCase()));
     const budgetIntent = /(budget|under|below|within|around|spend|limit|for ₱|for php|may ₱|sa halagang|budget ko|budget nako|only have|got)\b/i.test(question)
       || /\bfor\s+(?:₱\s*)?\d/i.test(question);
@@ -281,53 +289,48 @@ const availableFoods = foods.filter(food => food.available);
     }
 
     if (budget !== null && Number.isFinite(budget)) {
-      const mealItems = availableFoods.filter(food => food.category === 'Sulit Meals');
-      const sides = availableFoods.filter(food => food.category === 'Merienda' || food.category === 'Dessert');
+      const mealCategories = categories.filter(category => /\b(meals?|main|ulam)\b/i.test(category));
+      const mealItems = availableFoods.filter(food => mealCategories.includes(food.category));
+      const sides = mealCategories.length
+        ? availableFoods.filter(food => !mealCategories.includes(food.category))
+        : [];
       const pairings = mealItems.flatMap(meal => sides
         .map(side => ({ meal, side, total: Number(meal.price) + Number(side.price) }))
         .filter(pair => pair.total <= budget))
         .sort((first, second) => second.total - first.total);
-      const mealPicks = mealItems
+      const budgetPicks = availableFoods
         .filter(food => Number(food.price) <= budget)
         .sort((first, second) => Number(second.price) - Number(first.price))
-        .slice(0, 2);
+        .slice(0, 3);
 
       if (language === 'tagalog') {
         const options = [
           ...pairings.slice(0, 2).map(pair => `• ${pair.meal.name} + ${pair.side.name} — ${peso(pair.total)}`),
-          ...mealPicks.map(food => `• ${food.name} — ${peso(food.price)}`)
+          ...budgetPicks.map(food => `• ${food.name} — ${peso(food.price)}`)
         ];
-        if (options.length) return `Sulit picks sa budget na ${peso(budget)}:\n${[...new Set(options)].join('\n')}\nKain-tayo!`;
-        const cheapest = mealItems.sort((first, second) => Number(first.price) - Number(second.price))[0];
-        return cheapest ? `Wala pang Sulit Meal na pasok sa ${peso(budget)}. Pinakamalapit na option: ${cheapest.name} — ${peso(cheapest.price)}.` : 'Wala akong makitang available na Sulit Meals ngayon. Subukan ulit mamaya.';
+        if (options.length) return `Mga pagpipilian sa menu na pasok sa ${peso(budget)}:\n${[...new Set(options)].join('\n')}\nKain-tayo!`;
+        const cheapest = [...availableFoods].sort((first, second) => Number(first.price) - Number(second.price))[0];
+        return cheapest ? `Walang available na item na pasok sa ${peso(budget)}. Pinakamura: ${cheapest.name} — ${peso(cheapest.price)}.` : 'Wala akong makitang available na item ngayon. Subukan ulit mamaya.';
       }
       if (language === 'bisaya') {
         const options = [
           ...pairings.slice(0, 2).map(pair => `• ${pair.meal.name} + ${pair.side.name} — ${peso(pair.total)}`),
-          ...mealPicks.map(food => `• ${food.name} — ${peso(food.price)}`)
+          ...budgetPicks.map(food => `• ${food.name} — ${peso(food.price)}`)
         ];
-        if (options.length) return `Sulit nga mga kapilian sulod sa ${peso(budget)}:\n${[...new Set(options)].join('\n')}\nKain-tayo!`;
-        const cheapest = mealItems.sort((first, second) => Number(first.price) - Number(second.price))[0];
-        return cheapest ? `Walay Sulit Meal nga masulod sa ${peso(budget)}. Pinakaduol nga kapilian: ${cheapest.name} — ${peso(cheapest.price)}.` : 'Wala koy makita nga available nga Sulit Meals karon. Sulayi pag-usab unya.';
+        if (options.length) return `Mga kapilian sa menu sulod sa ${peso(budget)}:\n${[...new Set(options)].join('\n')}\nKain-tayo!`;
+        const cheapest = [...availableFoods].sort((first, second) => Number(first.price) - Number(second.price))[0];
+        return cheapest ? `Walay available nga item nga masulod sa ${peso(budget)}. Pinakabarato: ${cheapest.name} — ${peso(cheapest.price)}.` : 'Wala koy makita nga available nga item karon. Sulayi pag-usab unya.';
       }
 
       const options = [
         ...pairings.slice(0, 2).map(pair => `• ${pair.meal.name} + ${pair.side.name} — ${peso(pair.total)}`),
-        ...mealPicks.map(food => `• ${food.name} — ${peso(food.price)}`)
+        ...budgetPicks.map(food => `• ${food.name} — ${peso(food.price)}`)
       ];
-      if (options.length) return `Sulit picks within your ${peso(budget)} budget:\n${[...new Set(options)].join('\n')}\nKain-tayo!`;
-      const cheapest = mealItems.sort((first, second) => Number(first.price) - Number(second.price))[0];
+      if (options.length) return `Menu picks within your ${peso(budget)} budget:\n${[...new Set(options)].join('\n')}\nKain-tayo!`;
+      const cheapest = [...availableFoods].sort((first, second) => Number(first.price) - Number(second.price))[0];
       return cheapest
-        ? `I couldn't find a Sulit Meal within ${peso(budget)}. The closest option is ${cheapest.name} at ${peso(cheapest.price)}.`
-        : 'I can’t see any available Sulit Meals right now. Please check back soon.';
-    }
-
-    if (/(drink|drinks|beverage|inumin|inom|ilumin)/.test(query)) {
-      const desserts = availableFoods.filter(food => food.category === 'Dessert').slice(0, 2);
-      const dessertNames = desserts.map(food => `${food.name} (${peso(food.price)})`).join(', ');
-      if (language === 'tagalog') return `Wala pang inumin sa menu namin ngayon.${dessertNames ? ` Subukan ang ${dessertNames} bilang panghimagas.` : ''}`;
-      if (language === 'bisaya') return `Wala pay ilimnon sa among menu karon.${dessertNames ? ` Sulayi ang ${dessertNames} isip dessert.` : ''}`;
-      return `We don’t have drinks listed on the menu right now.${dessertNames ? ` You could try ${dessertNames} for dessert.` : ''}`;
+        ? `I couldn't find an available item within ${peso(budget)}. The lowest-priced option is ${cheapest.name} at ${peso(cheapest.price)}.`
+        : 'I can’t see any available menu items right now. Please check back soon.';
     }
 
     if (matchedFood) {
@@ -336,15 +339,16 @@ const availableFoods = foods.filter(food => food.available);
         if (language === 'bisaya') return `Dili available karon ang ${matchedFood.name}. Makapangita ko og laing pagkaon sa menu.`;
         return `${matchedFood.name} is currently unavailable. I can help you find another dish on the menu.`;
       }
-      if (pairingIntent && matchedFood.category !== 'Dessert' && matchedFood.category !== 'Merienda') {
-        const dessert = availableFoods
-          .filter(food => food.category === 'Dessert')
+      if (pairingIntent) {
+        const pairings = availableFoods
+          .filter(food => food.name !== matchedFood.name
+            && (requestedCategory ? food.category === requestedCategory : food.category !== matchedFood.category))
           .sort((first, second) => Number(first.price) - Number(second.price))[0];
-        if (dessert) {
-          const total = Number(matchedFood.price) + Number(dessert.price);
-          if (language === 'tagalog') return `Bagay ipares ang ${matchedFood.name} sa ${dessert.name} (${peso(dessert.price)}) para sa matamis na panghimagas. Kabuuan: ${peso(total)}.`;
-          if (language === 'bisaya') return `Lami ipares ang ${matchedFood.name} sa ${dessert.name} (${peso(dessert.price)}). Kinatibuk-an: ${peso(total)}.`;
-          return `Try ${matchedFood.name} with ${dessert.name} (${peso(dessert.price)}) for a sweet finish. Together: ${peso(total)}.`;
+        if (pairings) {
+          const total = Number(matchedFood.price) + Number(pairings.price);
+          if (language === 'tagalog') return `Bagay ipares ang ${matchedFood.name} sa ${pairings.name} (${pairings.category}) sa halagang ${peso(pairings.price)}. Kabuuan: ${peso(total)}.`;
+          if (language === 'bisaya') return `Lami ipares ang ${matchedFood.name} sa ${pairings.name} (${pairings.category}) sa kantidad nga ${peso(pairings.price)}. Kinatibuk-an: ${peso(total)}.`;
+          return `Try ${matchedFood.name} with ${pairings.name} (${pairings.category}) for ${peso(pairings.price)}. Together: ${peso(total)}.`;
         }
       }
       if (language === 'tagalog') return `${matchedFood.name} (${matchedFood.category}) ay available sa halagang ${peso(matchedFood.price)}. ${matchedFood.description}`;
@@ -358,10 +362,9 @@ const availableFoods = foods.filter(food => food.available);
       return 'Which dish would you like the price for? I’ll check the current menu price.';
     }
 
-    const requestedCategory = availableFoods.find(food => query.includes(food.category.toLowerCase()))?.category;
     if (requestedCategory || /(menu|dish|ulam|food|available|special|favorite|pagkaon|putahe|pagkain|meron|mayroon|lamian|unsay|unsa nga pagkaon|unsa inyo pagkaon|anong pagkain|anong ulam)/.test(query)) {
-      const categories = requestedCategory ? [requestedCategory] : ['Sulit Meals', 'Ulam', 'Merienda', 'Dessert'];
-      const items = categories.map(category => {
+      const categoriesToShow = requestedCategory ? [requestedCategory] : categories;
+      const items = categoriesToShow.map(category => {
         const categoryFoods = availableFoods.filter(food => food.category === category);
         return categoryFoods.length
           ? `• ${category}: ${categoryFoods.map(food => `${food.name} ${peso(food.price)}`).join(' · ')}`
@@ -398,9 +401,9 @@ const availableFoods = foods.filter(food => food.available);
       return 'Call us at 0909 989 2812. We’re located in Mambajao, Maasin City, Southern Leyte. You can also find our social links in the footer.';
     }
     if (pairingIntent) {
-      if (language === 'tagalog') return 'Anong ulam o Sulit Meal ang gusto mong ipares? Maaari akong magmungkahi ng dessert mula sa menu.';
-      if (language === 'bisaya') return 'Unsa nga ulam o Sulit Meal ang gusto nimong ipares? Makasugyot ko og dessert gikan sa menu.';
-      return 'Which ulam or Sulit Meal would you like to pair? I can suggest a dessert from our menu.';
+      if (language === 'tagalog') return `Anong item sa menu ang gusto mong ipares? Narito ang mga available:\n${categories.join(', ')}`;
+      if (language === 'bisaya') return `Unsa nga item sa menu ang gusto nimong ipares? Mao kini ang available:\n${categories.join(', ')}`;
+      return `Which menu item would you like to pair? Current categories: ${categories.join(', ')}`;
     }
     if (language === 'tagalog') return 'Matutulungan kita sa menu, presyo, budget picks, at masarap na pares. Ano ang gusto mong kainin?';
     if (language === 'bisaya') return 'Makatabang ko sa menu, presyo, budget picks, ug lamian nga pares. Unsa may imong gustong kan-on?';

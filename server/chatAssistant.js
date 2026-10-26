@@ -49,9 +49,11 @@ function getCategories(menu) {
     .sort((first, second) => first.localeCompare(second));
 }
 
-function isDrink(food) {
-  return /\b(drinks?|beverages?|soft drinks?|inumin|inom|ilimnon|soda|juice|water|coffee|tea|milkshake)\b/i
-    .test(food.category);
+function findMenuCategory(menu, query) {
+  const queryWords = query.split(/\s+/);
+  return getCategories(menu).find(category => normalize(category).split(/\s+/).every(categoryWord =>
+    queryWords.some(word => word === categoryWord || word === `${categoryWord}s` || categoryWord === `${word}s`)
+  ));
 }
 
 function listMenu(menu, selectedCategories, language) {
@@ -83,8 +85,11 @@ function listMenu(menu, selectedCategories, language) {
 }
 
 function budgetAnswer(menu, budget, language) {
-  const meals = menu.filter(food => ['Sulit Meals', 'Ulam'].includes(food.category));
-  const sides = menu.filter(food => ['Merienda', 'Dessert'].includes(food.category));
+  const mealCategories = getCategories(menu).filter(category => /\b(meals?|main|ulam)\b/.test(normalize(category)));
+  const meals = menu.filter(food => mealCategories.includes(food.category));
+  const sides = mealCategories.length
+    ? menu.filter(food => !mealCategories.includes(food.category))
+    : [];
   const combos = meals.flatMap(meal => sides
     .map(side => ({ meal, side, total: Number(meal.price) + Number(side.price) }))
     .filter(pair => pair.total <= budget))
@@ -114,9 +119,9 @@ function budgetAnswer(menu, budget, language) {
 
   return reply(
     language,
-    `Here are a few picks within your ${peso(budget)} budget:\n${uniqueOptions.join('\n')}\nPrices are menu prices; tell me if you want a meal, dessert, or a different budget.`,
-    `Mga pagpipilian pasok sa budget mong ${peso(budget)}:\n${uniqueOptions.join('\n')}\nPresyo ito mula sa menu. Sabihin kung meal, dessert, o ibang budget ang hanap mo.`,
-    `Mga kapilian sulod sa imong ${peso(budget)} nga budget:\n${uniqueOptions.join('\n')}\nPresyo kini gikan sa menu. Isulti kung meal, dessert, o laing budget ang imong gipangita.`
+    `Here are a few menu picks within your ${peso(budget)} budget:\n${uniqueOptions.join('\n')}\nPrices are from the current menu; tell me if you want a different category or budget.`,
+    `Mga pagpipilian mula sa menu na pasok sa budget mong ${peso(budget)}:\n${uniqueOptions.join('\n')}\nPresyo ito mula sa kasalukuyang menu. Sabihin kung ibang kategorya o budget ang hanap mo.`,
+    `Mga kapilian gikan sa menu sulod sa imong ${peso(budget)} nga budget:\n${uniqueOptions.join('\n')}\nPresyo kini gikan sa kasamtangang menu. Isulti kung laing kategorya o budget ang imong gipangita.`
   );
 }
 
@@ -159,41 +164,23 @@ export function buildChatAnswer(question, requestedLanguage, menu, history = [])
     );
   }
 
-  if (/\b(drink|drinks|beverage|inumin|inom|ilumin)\b/.test(query)) {
-    const drinks = availableMenu.filter(isDrink);
-    if (drinks.length) {
-      const drinkCategories = [...new Set(drinks.map(food => food.category).filter(Boolean))];
-      return reply(
-        language,
-        `Here are the drinks currently listed on our menu:\n${listMenu(drinks, drinkCategories, language)}`,
-        `Narito ang mga inuming nakalista ngayon sa menu:\n${listMenu(drinks, drinkCategories, language)}`,
-        `Mao kini ang mga ilimnon nga naa karon sa menu:\n${listMenu(drinks, drinkCategories, language)}`
-      );
-    }
-
-    return reply(
-      language,
-      'There are no drinks listed on the menu right now. I can suggest a dessert instead:\n' + listMenu(availableMenu, ['Dessert'], language),
-      'Walang nakalistang inumin sa menu ngayon. Maaari akong magmungkahi ng panghimagas:\n' + listMenu(availableMenu, ['Dessert'], language),
-      'Walay ilimnon nga gilista sa menu karon. Makasugyot ko og dessert:\n' + listMenu(availableMenu, ['Dessert'], language)
-    );
-  }
-
   if (matchedFood && pairingIntent) {
-    const desserts = availableMenu
-      .filter(food => food.category === 'Dessert')
+    const pairingCategory = findMenuCategory(availableMenu, query);
+    const pairings = availableMenu
+      .filter(food => food.name !== matchedFood.name
+        && (pairingCategory ? food.category === pairingCategory : food.category !== matchedFood.category))
       .sort((first, second) => Number(first.price) - Number(second.price))
       .slice(0, 3);
-    if (desserts.length) {
-      const suggestions = desserts.map(food => {
+    if (pairings.length) {
+      const suggestions = pairings.map(food => {
         const total = Number(matchedFood.price) + Number(food.price);
-        return `• ${food.name} — ${peso(food.price)} (meal + dessert: ${peso(total)})`;
+        return `• ${food.name} — ${peso(food.price)} (${matchedFood.category} + ${food.category}: ${peso(total)})`;
       }).join('\n');
       return reply(
         language,
-        `For a sweet finish with ${matchedFood.name}, try:\n${suggestions}\nThese are menu suggestions; tell me if you’d prefer a different kind of pairing.`,
-        `Para sa matamis na panghimagas kasama ng ${matchedFood.name}, subukan:\n${suggestions}\nMga mungkahi ito mula sa menu; sabihin kung iba ang gusto mong ipares.`,
-        `Para sa tam-is nga dessert uban sa ${matchedFood.name}, sulayi:\n${suggestions}\nMga suhestiyon kini gikan sa menu; isulti kung lahi nga pares ang imong gusto.`
+        `Here are menu pairing options with ${matchedFood.name}:\n${suggestions}\nTell me if you’d prefer a different category.`,
+        `Narito ang mga maaaring ipares sa ${matchedFood.name}:\n${suggestions}\nSabihin kung ibang kategorya ang gusto mo.`,
+        `Mao kini ang mga kapilian nga ipares sa ${matchedFood.name}:\n${suggestions}\nIsulti kung laing kategorya ang imong gusto.`
       );
     }
   }
@@ -218,11 +205,8 @@ export function buildChatAnswer(question, requestedLanguage, menu, history = [])
     );
   }
 
-  if (/\b(menu|dish|ulam|food|available|special|favorite|pagkaon|putahe|pagkain|meron|mayroon|lamian|unsay|unsa nga pagkaon|anong pagkain|anong ulam)\b/.test(query)) {
-    const selectedCategory = getCategories(availableMenu).find(category => query.includes(normalize(category)))
-      || (/\b(dessert|panghimagas)\b/.test(query) ? 'Dessert' : null)
-      || (/\b(merienda|snack)\b/.test(query) ? 'Merienda' : null)
-      || (/\b(ulam|main course|main dish)\b/.test(query) ? 'Ulam' : null);
+  const selectedCategory = findMenuCategory(availableMenu, query);
+  if (selectedCategory || /\b(menu|dish|ulam|food|available|special|favorite|pagkaon|putahe|pagkain|meron|mayroon|lamian|unsay|unsa nga pagkaon|anong pagkain|anong ulam)\b/.test(query)) {
     return listMenu(availableMenu, selectedCategory ? [selectedCategory] : getCategories(availableMenu), language);
   }
 
@@ -274,16 +258,16 @@ export function buildChatAnswer(question, requestedLanguage, menu, history = [])
   if (pairingIntent) {
     return reply(
       language,
-      `Which meal would you like to pair with a dessert? Here are the available desserts:\n${listMenu(availableMenu, ['Dessert'], language)}`,
-      `Aling meal ang gusto mong ipares sa panghimagas? Narito ang mga available na dessert:\n${listMenu(availableMenu, ['Dessert'], language)}`,
-      `Unsa nga meal ang gusto nimong ipares sa dessert? Mao kini ang available nga dessert:\n${listMenu(availableMenu, ['Dessert'], language)}`
+      `Which menu item would you like to pair? Here are the currently available options:\n${listMenu(availableMenu, getCategories(availableMenu), language)}`,
+      `Aling item sa menu ang gusto mong ipares? Narito ang mga available na pagpipilian:\n${listMenu(availableMenu, getCategories(availableMenu), language)}`,
+      `Unsa nga item sa menu ang gusto nimong ipares? Mao kini ang mga available nga kapilian:\n${listMenu(availableMenu, getCategories(availableMenu), language)}`
     );
   }
 
   return reply(
     language,
-    `I can help with the live menu, prices, budget picks, pairings, and ordering. Try asking “What can I get for ₱150?” or tell me a dish you like.\n${listMenu(availableMenu, ['Sulit Meals'], language)}`,
-    `Matutulungan kita sa menu, presyo, pasok sa budget, pares, at pag-order. Subukan: “Ano ang mabibili sa ₱150?” o sabihin ang pagkaing gusto mo.\n${listMenu(availableMenu, ['Sulit Meals'], language)}`,
-    `Makatabang ko sa menu, presyo, budget, pares, ug pag-order. Sulayi: “Unsa may mapalit sa ₱150?” o isulti ang imong ganahan nga pagkaon.\n${listMenu(availableMenu, ['Sulit Meals'], language)}`
+    `I can help with the live menu, prices, budget picks, pairings, and ordering. Try asking “What can I get for ₱150?” or tell me a dish you like.\n${listMenu(availableMenu, getCategories(availableMenu), language)}`,
+    `Matutulungan kita sa menu, presyo, pasok sa budget, pares, at pag-order. Subukan: “Ano ang mabibili sa ₱150?” o sabihin ang pagkaing gusto mo.\n${listMenu(availableMenu, getCategories(availableMenu), language)}`,
+    `Makatabang ko sa menu, presyo, budget, pares, ug pag-order. Sulayi: “Unsa may mapalit sa ₱150?” o isulti ang imong ganahan nga pagkaon.\n${listMenu(availableMenu, getCategories(availableMenu), language)}`
   );
 }

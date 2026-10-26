@@ -25,7 +25,8 @@ test('uses newly added menu categories and items in fallback replies', () => {
     ...menu,
     { name: 'Mountain Dew 12 oz', category: 'Drinks', price: 25, description: 'Chilled soda.', available: true },
     { name: 'Pepsi 12 oz', category: 'Drinks', price: 25, description: 'Chilled cola.', available: true },
-    { name: 'Unavailable Juice', category: 'Drinks', price: 30, description: '', available: false }
+    { name: 'Unavailable Juice', category: 'Drinks', price: 30, description: '', available: false },
+    { name: 'Pork Adobo Bowl', category: 'Chef Specials', price: 90, description: 'Pork adobo with rice.', available: true }
   ];
 
   const drinkAnswer = buildChatAnswer('What drinks are on the menu?', 'en', liveMenu);
@@ -36,6 +37,9 @@ test('uses newly added menu categories and items in fallback replies', () => {
   assert.doesNotMatch(drinkAnswer, /There are no drinks listed/);
   assert.match(buildChatAnswer('How much is Pepsi 12 oz?', 'en', liveMenu), /₱25\.00/);
   assert.match(buildChatAnswer('Show me the menu', 'en', liveMenu), /• Drinks:/);
+  assert.match(buildChatAnswer('Show me the Chef Specials', 'en', liveMenu), /• Chef Specials: Pork Adobo Bowl ₱90\.00/);
+  assert.match(buildChatAnswer('Show me the menu', 'en', liveMenu), /• Chef Specials: Pork Adobo Bowl/);
+  assert.match(buildChatAnswer('What can I get for ₱100?', 'en', liveMenu), /Pork Adobo Bowl — ₱90\.00/);
 });
 
 test('builds accurate budget combinations without exceeding the budget', () => {
@@ -46,7 +50,7 @@ test('builds accurate budget combinations without exceeding the budget', () => {
 
 test('suggests dessert pairings and includes accurate totals', () => {
   const answer = buildChatAnswer('What dessert goes with Chicken Adobo?', 'en', menu);
-  assert.match(answer, /Leche Flan — ₱100\.00 \(meal \+ dessert: ₱270\.00\)/);
+  assert.match(answer, /Leche Flan — ₱100\.00 \(Ulam \+ Dessert: ₱270\.00\)/);
 });
 
 test('uses recent chat context to resolve follow-up questions', () => {
@@ -104,7 +108,8 @@ test('chat API includes menu items added after initial catalog setup', async t =
   const liveMenu = [
     ...menu,
     { name: 'Mountain Dew 12 oz', category: 'Drinks', price: 25, description: 'Chilled soda.', available: true },
-    { name: 'Pepsi 12 oz', category: 'Drinks', price: 25, description: 'Chilled cola.', available: true }
+    { name: 'Pepsi 12 oz', category: 'Drinks', price: 25, description: 'Chilled cola.', available: true },
+    { name: 'Pork Adobo Bowl', category: 'Chef Specials', price: 90, description: 'Pork adobo with rice.', available: true }
   ];
   t.mock.method(Food, 'find', () => ({
     select() { return this; },
@@ -137,6 +142,15 @@ test('chat API includes menu items added after initial catalog setup', async t =
   assert.match(result.answer, /Mountain Dew 12 oz ₱25\.00/);
   assert.match(result.answer, /Pepsi 12 oz ₱25\.00/);
   assert.doesNotMatch(result.answer, /There are no drinks listed/);
+
+  const categoryResponse = await fetch(`http://127.0.0.1:${server.address().port}/chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question: 'Show me the Chef Specials', language: 'en' })
+  });
+  const categoryResult = await categoryResponse.json();
+  assert.equal(categoryResponse.status, 200);
+  assert.match(categoryResult.answer, /Pork Adobo Bowl ₱90\.00/);
 });
 
 test('chat API sends requests to OpenAI and returns its response', async t => {
