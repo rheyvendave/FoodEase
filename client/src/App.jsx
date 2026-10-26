@@ -91,6 +91,12 @@ export default function App() {
   const [orders, setOrders] = useState([]);
   const [adminSearch, setAdminSearch] = useState('');
   const [adminCategory, setAdminCategory] = useState('All categories');
+  const [orderSearch, setOrderSearch] = useState('');
+  const [orderStatusFilter, setOrderStatusFilter] = useState('All statuses');
+  const [orderPaymentFilter, setOrderPaymentFilter] = useState('All payment methods');
+  const [orderDateFrom, setOrderDateFrom] = useState('');
+  const [orderDateTo, setOrderDateTo] = useState('');
+  const [adminSidebarCollapsed, setAdminSidebarCollapsed] = useState(false);
   const [form, setForm] = useState(empty);
   const [edit, setEdit] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -99,6 +105,23 @@ export default function App() {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [chatMessages, setChatMessages] = useState([{ from: 'bot', text: chatLabels.en.greeting }]);
+  const filteredOrders = useMemo(() => orders.filter(order => {
+    const search = orderSearch.trim().toLowerCase();
+    const matchesSearch = !search || [
+      order._id,
+      order.customerName,
+      order.phone,
+      ...order.items.map(item => item.name)
+    ].some(value => String(value || '').toLowerCase().includes(search));
+    const matchesStatus = orderStatusFilter === 'All statuses' || order.status === orderStatusFilter;
+    const matchesPayment = orderPaymentFilter === 'All payment methods'
+      || (order.paymentMethod || 'cash').toLowerCase() === orderPaymentFilter.toLowerCase();
+    const createdAt = new Date(order.createdAt);
+    const orderDate = Number.isNaN(createdAt.getTime()) ? '' : createdAt.toISOString().slice(0, 10);
+    const matchesDate = (!orderDateFrom || orderDate >= orderDateFrom)
+      && (!orderDateTo || orderDate <= orderDateTo);
+    return matchesSearch && matchesStatus && matchesPayment && matchesDate;
+  }), [orders, orderSearch, orderStatusFilter, orderPaymentFilter, orderDateFrom, orderDateTo]);
 
   async function load() {
     try {
@@ -784,10 +807,11 @@ const availableFoods = foods.filter(food => food.available);
                 </div>
               </div>
             ) : (
-              <div className="admin-dashboard">
+              <div className={`admin-dashboard${adminSidebarCollapsed ? ' admin-sidebar-collapsed' : ''}`}>
                 <aside className="admin-sidebar" aria-label="Admin navigation">
                   <a className="admin-sidebar-brand" href="#admin-title" aria-label="FoodEase dashboard">
-                    <img src="/foodease-logo.png" alt="FoodEase" />
+                    <img className="admin-sidebar-mark" src="/foodease-icon.png" alt="" />
+                    <span className="admin-sidebar-wordmark"><strong>foodease</strong><small>FOOD AT YOUR DOORSTEP</small></span>
                   </a>
                   <span className="admin-sidebar-label">WORKSPACE</span>
                   {[
@@ -821,8 +845,17 @@ const availableFoods = foods.filter(food => food.available);
 
                 <div className="admin-dashboard-main">
                   <header className="admin-topbar">
+                    <button className="admin-topbar-menu" type="button" aria-label={adminSidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-pressed={adminSidebarCollapsed} onClick={() => setAdminSidebarCollapsed(collapsed => !collapsed)}>
+                      <span /><span /><span />
+                    </button>
                     <span className="admin-topbar-caption">FoodEase owner workspace</span>
-                    <div className="admin-profile"><span>FE</span><b>Admin</b></div>
+                    <div className="admin-topbar-actions">
+                      <button className="admin-notifications" type="button" aria-label="View pending orders" onClick={() => { setTab('orders'); loadOrders(); }}>
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" /></svg>
+                        {orders.some(order => order.status === 'Pending') && <i />}
+                      </button>
+                      <div className="admin-profile"><span>FE</span><b>Admin</b><small aria-hidden="true">⌄</small></div>
+                    </div>
                   </header>
 
                   <div className="admin-dashboard-content">
@@ -881,19 +914,31 @@ const availableFoods = foods.filter(food => food.available);
 
                     {tab === 'foods' && (
                       <>
-                        <div className="admin-page-heading">
-                          <div><span className="admin-section-kicker">MENU MANAGEMENT</span><h2 id="admin-title">Menu items</h2><p>Add, edit, and manage the dishes customers can order.</p></div>
-                          <button className="admin-primary-button" onClick={() => { setEdit(''); setForm(empty); document.getElementById('admin-food-name')?.focus(); }}>＋&nbsp; Add item</button>
-                        </div>
+                        <section className="admin-menu-hero">
+                          <div>
+                            <span className="admin-section-kicker">POWER WORKSPACE</span>
+                            <h2 id="admin-title">Manage menu &amp; orders</h2>
+                            <p>Add, edit, and manage your food items. Keep your menu fresh and your customers happy!</p>
+                            <div className="admin-banner-actions">
+                              <button onClick={() => setTab('foods')}>♨&nbsp; Food Menu</button>
+                              <button onClick={() => { setTab('orders'); loadOrders(); }}>▤&nbsp; Orders</button>
+                              <button onClick={logout}>↪&nbsp; Log out</button>
+                            </div>
+                          </div>
+                          <div className="admin-menu-hero-art">
+                            <span>Fresh Food<br />Better Mood</span>
+                            <img src={foods.find(food => food.name.toLowerCase().includes('chicken adobo'))?.imageUrl || foodPhotos[1]} alt="" />
+                          </div>
+                        </section>
                         <form className="form panel admin-food-form" onSubmit={save}>
-                          <div className="admin-section-heading"><div><span className="admin-section-kicker">{edit ? 'UPDATE YOUR MENU' : 'GROW YOUR MENU'}</span><h3>{edit ? 'Edit menu item' : 'Add a menu item'}</h3></div>{edit && <button className="admin-text-button" type="button" onClick={() => { setEdit(''); setForm(empty); }}>Cancel edit</button>}</div>
-                          <label>Food name<input id="admin-food-name" required placeholder="e.g. Chicken Adobo" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label>
-                          <label>Description<textarea placeholder="Describe the dish, ingredients, and special notes..." value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} /></label>
+                          <div className="admin-section-heading"><div><h3>{edit ? 'Edit menu item' : 'Add a menu item'}</h3><p>Fill in the details below to add a new food item to your menu.</p></div>{edit && <button className="admin-text-button" type="button" onClick={() => { setEdit(''); setForm(empty); }}>Cancel edit</button>}</div>
+                          <label className="admin-food-name-field">Food name<input id="admin-food-name" required placeholder="e.g. Chicken Adobo" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label>
+                          <label className="admin-food-description-field">Description<textarea placeholder="Describe the food, ingredients, and special notes..." value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} /></label>
                           <div className="admin-food-form-row">
                             <label>Category<input required placeholder="e.g. Ulam" value={form.category} onChange={event => setForm({ ...form, category: event.target.value })} /></label>
                             <label>Price (₱)<input type="number" min="0" step="0.01" required placeholder="0.00" value={form.price} onChange={event => setForm({ ...form, price: event.target.value })} /></label>
                           </div>
-                          <label>Image URL<input placeholder="https://example.com/image.jpg" value={form.imageUrl} onChange={event => setForm({ ...form, imageUrl: event.target.value })} /></label>
+                          <label className="admin-food-image-field">Image URL<input placeholder="https://example.com/image.jpg" value={form.imageUrl} onChange={event => setForm({ ...form, imageUrl: event.target.value })} /></label>
                           <label className="check admin-availability-check"><input type="checkbox" checked={form.available} onChange={event => setForm({ ...form, available: event.target.checked })} /> Available to customers</label>
                           <button className="admin-primary-button admin-form-submit">{edit ? 'Save changes' : '＋　Add food'}</button>
                         </form>
@@ -937,34 +982,50 @@ const availableFoods = foods.filter(food => food.available);
 
                     {tab === 'orders' && (
                       <>
-                        <div className="admin-page-heading">
-                          <div><span className="admin-section-kicker">ORDER MANAGEMENT</span><h2 id="admin-title">Customer orders</h2><p>Review orders and keep customers updated as you prepare them.</p></div>
-                          <button className="admin-secondary-button" onClick={loadOrders}>↻&nbsp; Refresh orders</button>
-                        </div>
-                        <div className="admin-stat-grid admin-order-stats">
+                        <div className="admin-orders-heading">
+                          <div className="admin-page-heading">
+                            <div><span className="admin-section-kicker">ORDER MANAGEMENT</span><h2 id="admin-title">Orders</h2><p>View and manage customer orders.</p></div>
+                            <button className="admin-secondary-button" onClick={loadOrders}>↻&nbsp; Refresh</button>
+                          </div>
+                          <div className="admin-stat-grid admin-order-stats">
                           {[
-                            ['Total orders', orders.length, 'admin-stat-green'],
-                            ['Pending', orders.filter(order => order.status === 'Pending').length, 'admin-stat-amber'],
-                            ['Preparing', orders.filter(order => order.status === 'Preparing').length, 'admin-stat-blue'],
-                            ['Completed', orders.filter(order => order.status === 'Completed').length, 'admin-stat-mint']
-                          ].map(([label, value, className]) => <article className={`admin-stat-card ${className}`} key={label}><div><small>{label}</small><b>{value}</b></div></article>)}
+                            ['Total orders', orders.length, '▤', 'admin-stat-green'],
+                            ['Pending', orders.filter(order => order.status === 'Pending').length, '◷', 'admin-stat-amber'],
+                            ['Preparing', orders.filter(order => order.status === 'Preparing').length, '♨', 'admin-stat-blue'],
+                            ['Completed', orders.filter(order => order.status === 'Completed').length, '✓', 'admin-stat-mint']
+                          ].map(([label, value, icon, className]) => <article className={`admin-stat-card ${className}`} key={label}><span aria-hidden="true">{icon}</span><div><small>{label}</small><b>{value}</b></div></article>)}
+                          </div>
                         </div>
                         <section className="admin-section-card">
-                          <div className="admin-section-heading"><div><span className="admin-section-kicker">LIVE ORDER QUEUE</span><h3>All orders</h3></div></div>
-                          {orders.length ? <div className="admin-table-wrap"><table className="admin-table admin-orders-table">
-                            <thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>Status</th><th>Order date</th></tr></thead>
-                            <tbody>{orders.map(order => <tr key={order._id}>
+                          <div className="admin-orders-toolbar">
+                            <input aria-label="Search orders" placeholder="Search by order number, customer name, or food item..." value={orderSearch} onChange={event => setOrderSearch(event.target.value)} />
+                            <select aria-label="Filter order status" value={orderStatusFilter} onChange={event => setOrderStatusFilter(event.target.value)}>
+                              {['All statuses', 'Pending', 'Confirmed', 'Preparing', 'Ready', 'Out for delivery', 'Completed', 'Cancelled'].map(status => <option key={status}>{status}</option>)}
+                            </select>
+                            <select aria-label="Filter payment method" value={orderPaymentFilter} onChange={event => setOrderPaymentFilter(event.target.value)}>
+                              <option>All payment methods</option>
+                              <option value="cash">Cash</option>
+                            </select>
+                            <div className="admin-date-range">
+                              <input aria-label="Orders from date" type="date" value={orderDateFrom} onChange={event => setOrderDateFrom(event.target.value)} />
+                              <span aria-hidden="true">–</span>
+                              <input aria-label="Orders through date" type="date" value={orderDateTo} onChange={event => setOrderDateTo(event.target.value)} />
+                            </div>
+                          </div>
+                          {filteredOrders.length ? <div className="admin-table-wrap"><table className="admin-table admin-orders-table">
+                            <thead><tr><th>Order #</th><th>Customer</th><th>Items</th><th>Total amount</th><th>Payment method</th><th>Status</th><th>Order date</th></tr></thead>
+                            <tbody>{filteredOrders.map(order => <tr key={order._id}>
                               <td><b>#{order._id.slice(-6).toUpperCase()}</b><small>{order.fulfillment}</small></td>
                               <td>{order.customerName}<small>{order.phone}{order.address ? ` · ${order.address}` : ''}</small></td>
                               <td>{order.items.map(item => `${item.name} × ${item.quantity}`).join(', ')}</td>
                               <td><b>{peso(order.total)}</b></td>
-                              <td><span className="admin-payment-pill">Cash</span></td>
+                              <td><span className="admin-payment-pill">{(order.paymentMethod || 'cash').charAt(0).toUpperCase() + (order.paymentMethod || 'cash').slice(1)}</span></td>
                               <td><select className={`admin-status-select status-${order.status.toLowerCase().replaceAll(' ', '-')}`} aria-label={`Update order ${order._id.slice(-6)} status`} value={order.status} onChange={event => status(order, event.target.value)}>
                                 {['Pending', 'Confirmed', 'Preparing', 'Ready', 'Out for delivery', 'Completed', 'Cancelled'].map(item => <option key={item}>{item}</option>)}
                               </select></td>
                               <td>{new Date(order.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
                             </tr>)}</tbody>
-                          </table></div> : <p className="admin-empty-state">No orders yet. New customer orders will appear here.</p>}
+                          </table></div> : <p className="admin-empty-state">{orders.length ? 'No orders match those filters.' : 'No orders yet. New customer orders will appear here.'}</p>}
                         </section>
                       </>
                     )}
