@@ -931,7 +931,7 @@ const availableFoods = foods.filter(food => food.available);
                           </div>
                           <div className="admin-menu-hero-art">
                             <span>Fresh Food<br />Better Mood</span>
-                            <img src={foods.find(food => food.name.toLowerCase().includes('chicken adobo'))?.imageUrl || foodPhotos[1]} alt="" />
+                            <img src={foods.find(food => food.name.toLowerCase().includes('pork adobo'))?.imageUrl || menuItems.find(food => food.name === 'Pork Adobo').imageUrl} alt="Pork Adobo" />
                           </div>
                         </section>
                         <form className="form panel admin-food-form" onSubmit={save}>
