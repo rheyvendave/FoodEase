@@ -53,7 +53,22 @@ const isValidFullName = value => /^(?:\p{L}[\p{L}\p{M}]*(?:['’-]\p{L}[\p{L}\p{
 
 async function downloadOrderReceiptImage(receiptElement, order) {
   const { default: html2canvas } = await import('html2canvas');
-  const canvas = await html2canvas(receiptElement, { backgroundColor: '#fff', scale: 2 });
+  const canvas = await html2canvas(receiptElement, {
+    backgroundColor: '#fff',
+    height: receiptElement.scrollHeight,
+    ignoreElements: element => element.classList?.contains('close')
+      || element.classList?.contains('receipt-actions'),
+    onclone: clonedDocument => {
+      const clonedReceipt = clonedDocument.querySelector('[data-receipt-capture]');
+      if (clonedReceipt instanceof HTMLElement) {
+        clonedReceipt.style.maxHeight = 'none';
+        clonedReceipt.style.height = 'auto';
+        clonedReceipt.style.overflow = 'visible';
+      }
+    },
+    scale: 2,
+    windowHeight: Math.max(window.innerHeight, receiptElement.scrollHeight)
+  });
   const image = await new Promise((resolve, reject) => {
     canvas.toBlob(
       blob => blob ? resolve(blob) : reject(new Error('Your browser could not create the receipt image.')),
@@ -170,7 +185,7 @@ export default function App() {
   const [checkout, setCheckout] = useState(false);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [receiptDownloading, setReceiptDownloading] = useState(false);
-  const receiptContentRef = useRef(null);
+  const receiptModalRef = useRef(null);
   const [customer, setCustomer] = useState({ customerName: '', phone: '', fulfillment: 'pickup', address: '' });
   const [nameTouched, setNameTouched] = useState(false);
   const [phoneTouched, setPhoneTouched] = useState(false);
@@ -980,9 +995,9 @@ const availableFoods = foods.filter(food => food.available);
 
       {receipt && (
         <div className="overlay receipt-overlay" onClick={() => setReceipt(null)}>
-          <section className="modal receipt-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-title" onClick={event => event.stopPropagation()}>
+          <section className="modal receipt-modal" data-receipt-capture ref={receiptModalRef} role="dialog" aria-modal="true" aria-labelledby="receipt-title" onClick={event => event.stopPropagation()}>
             <button className="close" aria-label="Close receipt" onClick={() => setReceipt(null)}>×</button>
-            <div className="receipt-content" ref={receiptContentRef}>
+            <div className="receipt-content">
               <div className="receipt-heading">
                 <small className="eyebrow">FOODEASE ORDER RECEIPT</small>
                 <h2 id="receipt-title">Your order is <em>placed</em></h2>
@@ -1014,8 +1029,8 @@ const availableFoods = foods.filter(food => food.available);
               <button className="cta" disabled={receiptDownloading} onClick={async () => {
                 setReceiptDownloading(true);
                 try {
-                  if (!receiptContentRef.current) throw new Error('Receipt content is not available.');
-                  await downloadOrderReceiptImage(receiptContentRef.current, receipt);
+                  if (!receiptModalRef.current) throw new Error('Receipt is not available.');
+                  await downloadOrderReceiptImage(receiptModalRef.current, receipt);
                 } catch (error) {
                   console.error('Unable to download the order receipt image.', error);
                   setMsg('Could not download the receipt image. Please try again.');
