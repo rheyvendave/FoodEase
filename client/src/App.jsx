@@ -200,6 +200,8 @@ export default function App() {
   const [adminLoginNotice, setAdminLoginNotice] = useState('');
   const [tab, setTab] = useState('overview');
   const [orders, setOrders] = useState([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const ordersLoadSequence = useRef(0);
   const [editingOrder, setEditingOrder] = useState(null);
   const [orderEditDraft, setOrderEditDraft] = useState({ customerName: '', phone: '', address: '' });
   const [orderEditSaving, setOrderEditSaving] = useState(false);
@@ -680,11 +682,22 @@ const availableFoods = foods.filter(food => food.available);
   }
 
   async function loadOrders(authToken = token) {
+    const requestSequence = ++ordersLoadSequence.current;
+    setOrdersLoading(true);
     try {
-      setOrders(await api('/orders', {}, authToken));
+      const loadedOrders = await api('/orders', { cache: 'no-store' }, authToken);
+      if (requestSequence === ordersLoadSequence.current) setOrders(loadedOrders);
+      return true;
     } catch (error) {
-      setMsg(error.message);
+      if (requestSequence === ordersLoadSequence.current) setMsg(error.message);
+      return false;
+    } finally {
+      if (requestSequence === ordersLoadSequence.current) setOrdersLoading(false);
     }
+  }
+
+  async function refreshOrders() {
+    if (await loadOrders()) setMsg('Orders refreshed');
   }
 
   function editOrder(order) {
@@ -1424,7 +1437,9 @@ const availableFoods = foods.filter(food => food.available);
                         <div className="admin-orders-heading">
                           <div className="admin-page-heading">
                             <div><span className="admin-section-kicker">ORDER MANAGEMENT</span><h2 id="admin-title">Orders</h2><p>View and manage customer orders.</p></div>
-                            <button className="admin-secondary-button" onClick={() => loadOrders()}>↻&nbsp; Refresh</button>
+                            <button className="admin-secondary-button" type="button" onClick={refreshOrders} disabled={ordersLoading} aria-busy={ordersLoading}>
+                              {ordersLoading ? '↻&nbsp; Refreshing…' : '↻&nbsp; Refresh'}
+                            </button>
                           </div>
                           <div className="admin-stat-grid admin-order-stats">
                           {[

@@ -107,6 +107,7 @@ export async function listOrders(_req, res, next) {
       foods.map((food) => [String(food._id), food.imageUrl]),
     );
 
+    res.set("Cache-Control", "no-store");
     res.json(
       orders.map((order) => {
         const data = order.toObject();

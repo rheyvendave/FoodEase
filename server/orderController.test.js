@@ -8,6 +8,7 @@ import {
   deleteOrder,
   getSalesPeriodRange,
   getSalesSummary,
+  listOrders,
   updateOrderCustomerDetails,
   updateOrderStatus
 } from './controllers/orderController.js';
@@ -35,6 +36,23 @@ function responseStub() {
   };
 }
 
+test('does not cache the admin order list response', async t => {
+  const order = {
+    items: [],
+    toObject: () => ({ _id: '507f1f77bcf86cd799439012', items: [] })
+  };
+  t.mock.method(Order, 'find', () => ({
+    sort: () => ({
+      limit: async () => [order]
+    })
+  }));
+  const res = responseStub();
+
+  await listOrders({}, res, error => { throw error; });
+
+  assert.equal(res.headers['cache-control'], 'no-store');
+  assert.deepEqual(res.body, [{ _id: '507f1f77bcf86cd799439012', items: [] }]);
+});
 async function startOrderServer(t) {
   const app = express();
   app.use(express.json());
