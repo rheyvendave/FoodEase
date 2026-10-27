@@ -47,6 +47,8 @@ const peso = value => '₱' + Number(value || 0).toFixed(2);
 const foodCategories = ['Dessert', 'Drinks', 'Merienda', 'Sulit Meals', 'Ulam'];
 const empty = { name: '', description: '', category: '', price: '', imageUrl: '', available: true };
 const maxFoodImageBytes = 450 * 1024;
+const maxOrderItemQuantity = 50;
+const isValidPhilippineMobileNumber = value => /^(?:09\d{9}|\+639\d{9}|639\d{9})$/.test(value);
 
 async function prepareFoodImage(file) {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
@@ -142,7 +144,9 @@ export default function App() {
   const [menuQuantities, setMenuQuantities] = useState({});
   const [msg, setMsg] = useState('');
   const [checkout, setCheckout] = useState(false);
+  const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [customer, setCustomer] = useState({ customerName: '', phone: '', fulfillment: 'pickup', address: '' });
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [admin, setAdmin] = useState(false);
   const [token, setToken] = useState(sessionStorage.getItem('food-token') || '');
   const [rememberLogin, setRememberLogin] = useState(() => localStorage.getItem('food-admin-remember') === 'true');
@@ -197,9 +201,9 @@ export default function App() {
     || menuItems.find(food => food.name.toLowerCase() === String(item.name || '').toLowerCase())?.imageUrl
     || foodPhotos[0];
 
-  async function load() {
+  async function load(authToken = token) {
     try {
-      setFoods(await api('/foods?includeUnavailable=' + Boolean(token)));
+      setFoods(await api('/foods?includeUnavailable=' + Boolean(authToken), {}, authToken));
       setDemo(false);
     } catch {
       setFoods(sample);
@@ -448,6 +452,11 @@ const availableFoods = foods.filter(food => food.available);
   }
 
   function add(food, quantity = 1) {
+    const currentQuantity = cart.find(item => item._id === food._id)?.quantity || 0;
+    if (currentQuantity + quantity > maxOrderItemQuantity) {
+      setMsg(`Maximum ${maxOrderItemQuantity} per menu item.`);
+      return;
+    }
     setCart(items => items.some(item => item._id === food._id)
       ? items.map(item => item._id === food._id ? { ...item, quantity: item.quantity + quantity } : item)
       : [...items, { ...food, quantity }]);
@@ -457,18 +466,33 @@ const availableFoods = foods.filter(food => food.available);
   function changeMenuQuantity(id, delta) {
     setMenuQuantities(quantities => ({
       ...quantities,
-      [id]: Math.max(1, (quantities[id] || 1) + delta)
+      [id]: Math.min(maxOrderItemQuantity, Math.max(1, (quantities[id] || 1) + delta))
     }));
   }
 
   function qty(id, delta) {
     setCart(items => items
-      .map(item => item._id === id ? { ...item, quantity: item.quantity + delta } : item)
+      .map(item => item._id === id
+        ? { ...item, quantity: Math.min(maxOrderItemQuantity, item.quantity + delta) }
+        : item)
       .filter(item => item.quantity > 0));
   }
 
   async function place(event) {
     event.preventDefault();
+    if (orderSubmitting) return;
+    setPhoneTouched(true);
+    if (!isValidPhilippineMobileNumber(customer.phone.trim())) return;
+    if (!['pickup', 'delivery'].includes(customer.fulfillment)) {
+      setMsg('Choose pickup or delivery.');
+      return;
+    }
+    if (customer.fulfillment === 'delivery'
+      && (typeof customer.address !== 'string' || !customer.address.trim() || customer.address.trim().length > 250)) {
+      setMsg('Enter a delivery address (250 characters or fewer).');
+      return;
+    }
+    setOrderSubmitting(true);
     try {
       if (demo) throw Error('Start the backend and MongoDB before placing a real order.');
       const result = await api('/orders', {
@@ -480,6 +504,8 @@ const availableFoods = foods.filter(food => food.available);
       setMsg('Order placed! Reference ' + result.order._id.slice(-6).toUpperCase());
     } catch (error) {
       setMsg(error.message);
+    } finally {
+      setOrderSubmitting(false);
     }
   }
 
@@ -500,7 +526,7 @@ const availableFoods = foods.filter(food => food.available);
       setAdmin(true);
       setTab('overview');
       setCredentials({ username: rememberLogin ? credentials.username : '', password: '' });
-      await Promise.all([load(), loadOrders(result.token)]);
+      await Promise.all([load(result.token), loadOrders(result.token)]);
       setMsg('Admin signed in');
     } catch (error) {
       setAdminLoginNotice(error.message === 'Invalid username or password.'
@@ -613,7 +639,7 @@ const availableFoods = foods.filter(food => food.available);
     sessionStorage.removeItem('food-token');
     setAdmin(false);
     setOrders([]);
-    load();
+    load('');
   }
 
   function showPhotoFallback(event) {
@@ -692,7 +718,7 @@ const availableFoods = foods.filter(food => food.available);
                       <div className="quantity-stepper" aria-label={`Quantity for ${food.name}`}>
                         <button type="button" aria-label={`Decrease ${food.name} quantity`} disabled={!food.available || (menuQuantities[food._id] || 1) <= 1} onClick={() => changeMenuQuantity(food._id, -1)}>−</button>
                         <span aria-live="polite">{menuQuantities[food._id] || 1}</span>
-                        <button type="button" aria-label={`Increase ${food.name} quantity`} disabled={!food.available} onClick={() => changeMenuQuantity(food._id, 1)}>+</button>
+                        <button type="button" aria-label={`Increase ${food.name} quantity`} disabled={!food.available || (menuQuantities[food._id] || 1) >= maxOrderItemQuantity} onClick={() => changeMenuQuantity(food._id, 1)}>+</button>
                       </div>
                       <button className="feature-add" disabled={!food.available} onClick={() => add(food, menuQuantities[food._id] || 1)} aria-label={`Add ${menuQuantities[food._id] || 1} ${food.name} to order`}><span aria-hidden="true">🛒</span> Add</button>
                     </div>
@@ -733,7 +759,7 @@ const availableFoods = foods.filter(food => food.available);
                       <div className="quantity-stepper" aria-label={`Quantity for ${food.name}`}>
                         <button type="button" aria-label={`Decrease ${food.name} quantity`} disabled={!food.available || (menuQuantities[food._id] || 1) <= 1} onClick={() => changeMenuQuantity(food._id, -1)}>−</button>
                         <span aria-live="polite">{menuQuantities[food._id] || 1}</span>
-                        <button type="button" aria-label={`Increase ${food.name} quantity`} disabled={!food.available} onClick={() => changeMenuQuantity(food._id, 1)}>+</button>
+                        <button type="button" aria-label={`Increase ${food.name} quantity`} disabled={!food.available || (menuQuantities[food._id] || 1) >= maxOrderItemQuantity} onClick={() => changeMenuQuantity(food._id, 1)}>+</button>
                       </div>
                       <button className="feature-add" disabled={!food.available} onClick={() => add(food, menuQuantities[food._id] || 1)} aria-label={`Add ${menuQuantities[food._id] || 1} ${food.name} to order`}><span aria-hidden="true">🛒</span> Add</button>
                     </div>
@@ -840,7 +866,7 @@ const availableFoods = foods.filter(food => food.available);
                       <div className="quantity-control">
                         <button aria-label={`Remove one ${item.name}`} onClick={() => qty(item._id, -1)}>−</button>
                         <span>{item.quantity}</span>
-                        <button aria-label={`Add one ${item.name}`} onClick={() => qty(item._id, 1)}>+</button>
+                        <button aria-label={`Add one ${item.name}`} disabled={item.quantity >= maxOrderItemQuantity} onClick={() => qty(item._id, 1)}>+</button>
                       </div>
                       <b>{peso(item.price * item.quantity)}</b>
                     </div>
@@ -849,11 +875,12 @@ const availableFoods = foods.filter(food => food.available);
                 <h3 className="total">Total <em>{peso(total)}</em></h3>
                 <form onSubmit={place} className="form">
                   <label>Full name<input required value={customer.customerName} onChange={event => setCustomer({ ...customer, customerName: event.target.value })} /></label>
-                  <label>Phone number<input required value={customer.phone} onChange={event => setCustomer({ ...customer, phone: event.target.value })} /></label>
-                  <label>Fulfillment<select value={customer.fulfillment} onChange={event => setCustomer({ ...customer, fulfillment: event.target.value })}><option value="pickup">Pickup</option><option value="delivery">Delivery</option></select></label>
-                  <label>Address<input required autoComplete="street-address" value={customer.address} onChange={event => setCustomer({ ...customer, address: event.target.value })} placeholder="House number, street, barangay, city" /></label>
+                  <label>Phone number<input required type="tel" inputMode="tel" autoComplete="tel" aria-invalid={phoneTouched && !isValidPhilippineMobileNumber(customer.phone.trim())} aria-describedby={phoneTouched && !isValidPhilippineMobileNumber(customer.phone.trim()) ? 'order-phone-help' : undefined} value={customer.phone} onBlur={() => setPhoneTouched(true)} onChange={event => setCustomer({ ...customer, phone: event.target.value })} /></label>
+                  {phoneTouched && !isValidPhilippineMobileNumber(customer.phone.trim()) && <small id="order-phone-help" role="alert">Enter a valid Philippine mobile number, e.g. 09171234567, +639171234567, or 639171234567.</small>}
+                  <label>Fulfillment<select required value={customer.fulfillment} onChange={event => setCustomer({ ...customer, fulfillment: event.target.value, address: event.target.value === 'delivery' ? customer.address : '' })}><option value="pickup">Pickup</option><option value="delivery">Delivery</option></select></label>
+                  {customer.fulfillment === 'delivery' && <label>Address<input required maxLength={250} autoComplete="street-address" value={customer.address} onChange={event => setCustomer({ ...customer, address: event.target.value })} placeholder="House number, street, barangay, city" /></label>}
                   <p className="cash">💵 Cash on {customer.fulfillment}</p>
-                  <button className="cta full">Place order · {peso(total)}</button>
+                  <button className="cta full" disabled={orderSubmitting}>{orderSubmitting ? 'Placing order...' : `Place order · ${peso(total)}`}</button>
                 </form>
               </>
             )}
@@ -1037,7 +1064,7 @@ const availableFoods = foods.filter(food => food.available);
                                 <tbody>{orders.slice(0, 5).map(order => (
                                   <tr key={order._id}>
                                     <td><b>#{order._id.slice(-6).toUpperCase()}</b><small>{new Date(order.createdAt).toLocaleDateString()}</small></td>
-                                    <td className="admin-order-customer"><b>{order.customerName}</b><small>{order.phone}</small><small className="admin-order-address">{order.address || 'Address not provided on this older order'}</small><small>{order.fulfillment === 'delivery' ? 'Delivery' : 'Pickup'}</small></td>
+                                    <td className="admin-order-customer"><b>{order.customerName}</b><small>{order.phone}</small>{order.fulfillment === 'delivery' && <small className="admin-order-address">{order.address || 'Delivery address not provided'}</small>}<small>{order.fulfillment === 'delivery' ? 'Delivery' : 'Pickup'}</small></td>
                                     <td><div className="admin-order-items">{order.items.map((item, index) => <div className="admin-order-item" key={`${item.foodId || item.name}-${index}`}><img src={getOrderItemImage(item)} alt={item.name} /><span><b>{item.name}</b><small>Qty {item.quantity} · {peso(item.price)}</small></span></div>)}</div></td>
                                     <td><b>{peso(order.total)}</b></td>
                                     <td><span className={`admin-status status-${order.status.toLowerCase().replaceAll(' ', '-')}`}>{order.status}</span></td>
@@ -1155,7 +1182,7 @@ const availableFoods = foods.filter(food => food.available);
                             <thead><tr><th>Order #</th><th>Customer</th><th>Items</th><th>Total amount</th><th>Payment method</th><th>Status</th><th>Order date</th></tr></thead>
                             <tbody>{filteredOrders.map(order => <tr key={order._id}>
                               <td><b>#{order._id.slice(-6).toUpperCase()}</b><small>{order.fulfillment}</small></td>
-                              <td className="admin-order-customer"><b>{order.customerName}</b><small>{order.phone}</small><small className="admin-order-address"><strong>Address:</strong> {order.address || 'Not provided on this older order'}</small></td>
+                              <td className="admin-order-customer"><b>{order.customerName}</b><small>{order.phone}</small>{order.fulfillment === 'delivery' && <small className="admin-order-address"><strong>Address:</strong> {order.address || 'Not provided'}</small>}</td>
                               <td><div className="admin-order-items">{order.items.map((item, index) => <div className="admin-order-item" key={`${item.foodId || item.name}-${index}`}><img src={getOrderItemImage(item)} alt={item.name} /><span><b>{item.name}</b><small>Qty {item.quantity} · {peso(item.price)}</small></span></div>)}</div></td>
                               <td><b>{peso(order.total)}</b></td>
                               <td><span className="admin-payment-pill">{(order.paymentMethod || 'cash').charAt(0).toUpperCase() + (order.paymentMethod || 'cash').slice(1)}</span></td>
@@ -1185,7 +1212,7 @@ const availableFoods = foods.filter(food => food.available);
                               customers.set(key, customer);
                               return customers;
                             }, new Map()).values()].map(customer => <tr key={customer.phone}>
-                              <td><b>{customer.customerName}</b></td><td>{customer.phone}</td><td className="admin-order-address">{customer.address || 'Not provided on older order'}</td><td>{customer.orderCount}</td><td><b>{peso(customer.spent)}</b></td><td>{new Date(customer.createdAt).toLocaleDateString()}</td>
+                              <td><b>{customer.customerName}</b></td><td>{customer.phone}</td><td className="admin-order-address">{customer.address || 'No delivery address on file'}</td><td>{customer.orderCount}</td><td><b>{peso(customer.spent)}</b></td><td>{new Date(customer.createdAt).toLocaleDateString()}</td>
                             </tr>)}</tbody>
                           </table></div> : <p className="admin-empty-state">Customer details will appear after the first order.</p>}
                         </section>

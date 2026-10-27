@@ -22,6 +22,8 @@ function isValidImageUrl(imageUrl) {
 export async function listFoods(req, res, next) {
   try {
     const { search = "", category = "" } = req.query;
+    if (typeof search !== "string" || typeof category !== "string")
+      return res.status(400).json({ message: "Invalid menu filter." });
     const filter = {};
     if (req.query.includeUnavailable !== "true") filter.available = true;
     if (category && category !== "All") filter.category = category;
@@ -44,6 +46,8 @@ export async function getFood(req, res, next) {
 }
 export async function createFood(req, res, next) {
   try {
+    if (!req.body || typeof req.body !== "object" || Array.isArray(req.body))
+      return res.status(400).json({ message: "Invalid menu item." });
     const {
       name,
       description = "",
@@ -51,23 +55,28 @@ export async function createFood(req, res, next) {
       price,
       imageUrl = "",
       available = true,
-    } = req.body || {};
+    } = req.body;
+    const validPrice = (typeof price === "number"
+      || (typeof price === "string" && price.trim() !== ""))
+      && Number.isFinite(Number(price)) && Number(price) >= 0;
     if (
-      !name?.trim() ||
+      typeof name !== "string" || !name.trim() || name.trim().length > 100 ||
+      typeof description !== "string" || description.length > 500 ||
       !FOOD_CATEGORIES.includes(category) ||
-      !Number.isFinite(Number(price)) ||
-      Number(price) < 0
+      !validPrice
     )
       return res
         .status(400)
         .json({ message: "Name, a supported category, and valid price are required." });
+    if (typeof available !== "boolean")
+      return res.status(400).json({ message: "Availability must be true or false." });
     if (!isValidImageUrl(imageUrl))
       return res.status(400).json({ message: "Choose a valid image no larger than 450 KB." });
     res
       .status(201)
       .json(
         await Food.create({
-          name,
+          name: name.trim(),
           description,
           category,
           price: Number(price),
@@ -83,6 +92,8 @@ export async function updateFood(req, res, next) {
   try {
     if (!mongoose.isValidObjectId(req.params.id))
       return res.status(400).json({ message: "Invalid food ID." });
+    if (!req.body || typeof req.body !== "object" || Array.isArray(req.body))
+      return res.status(400).json({ message: "Invalid menu item update." });
     const updates = {};
     for (const k of [
       "name",
@@ -95,10 +106,22 @@ export async function updateFood(req, res, next) {
       if (req.body?.[k] !== undefined) updates[k] = req.body[k];
     if (updates.category !== undefined && !FOOD_CATEGORIES.includes(updates.category))
       return res.status(400).json({ message: "Choose a supported food category." });
+    if (updates.name !== undefined) {
+      if (typeof updates.name !== "string" || !updates.name.trim() || updates.name.trim().length > 100)
+        return res.status(400).json({ message: "Name must be between 1 and 100 characters." });
+      updates.name = updates.name.trim();
+    }
+    if (updates.description !== undefined
+      && (typeof updates.description !== "string" || updates.description.length > 500))
+      return res.status(400).json({ message: "Description must be 500 characters or fewer." });
+    if (updates.available !== undefined && typeof updates.available !== "boolean")
+      return res.status(400).json({ message: "Availability must be true or false." });
     if (updates.imageUrl !== undefined && !isValidImageUrl(updates.imageUrl))
       return res.status(400).json({ message: "Choose a valid image no larger than 450 KB." });
     if (updates.price !== undefined) {
-      if (!Number.isFinite(Number(updates.price)) || Number(updates.price) < 0)
+      if ((typeof updates.price !== "number"
+        && (typeof updates.price !== "string" || updates.price.trim() === ""))
+        || !Number.isFinite(Number(updates.price)) || Number(updates.price) < 0)
         return res.status(400).json({ message: "Invalid price." });
       updates.price = Number(updates.price);
     }

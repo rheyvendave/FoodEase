@@ -1,25 +1,49 @@
 import mongoose from "mongoose";
 import Food from "../models/Food.js";
 import Order from "../models/Order.js";
+const PHILIPPINE_MOBILE_NUMBER = /^(?:09\d{9}|\+639\d{9}|639\d{9})$/;
+
 export async function createOrder(req, res, next) {
   try {
+    if (!req.body || typeof req.body !== "object" || Array.isArray(req.body))
+      return res.status(400).json({ message: "Invalid order details." });
     const {
       customerName,
       phone,
       fulfillment,
       address,
       items,
-    } = req.body || {};
-    if (!customerName?.trim() || !phone?.trim())
-      return res.status(400).json({ message: "Name and phone are required." });
+    } = req.body;
+    if (typeof customerName !== "string" || !customerName.trim()
+      || customerName.trim().length > 100)
+      return res.status(400).json({ message: "Enter a valid name." });
+    if (typeof phone !== "string" || !PHILIPPINE_MOBILE_NUMBER.test(phone.trim()))
+      return res.status(400).json({
+        message: "Enter a valid Philippine mobile number (09171234567, +639171234567, or 639171234567).",
+      });
     if (!["pickup", "delivery"].includes(fulfillment))
       return res.status(400).json({ message: "Choose pickup or delivery." });
-    if (typeof address !== "string" || !address.trim())
-      return res.status(400).json({ message: "Address is required for every order." });
+    const orderAddress = fulfillment === "delivery"
+      ? typeof address === "string" ? address.trim() : ""
+      : "";
+    if (fulfillment === "delivery" && (!orderAddress || orderAddress.length > 250))
+      return res.status(400).json({ message: "A delivery address is required and must be 250 characters or fewer." });
     if (!Array.isArray(items) || !items.length)
       return res.status(400).json({ message: "Cart is empty." });
-    if (items.some((i) => !mongoose.isValidObjectId(i.foodId)))
+    if (items.length > 50)
+      return res.status(400).json({ message: "Cart has too many menu items." });
+    if (items.some((item) => !item || typeof item !== "object" || Array.isArray(item)
+      || !mongoose.isValidObjectId(item.foodId)
+      || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 50))
       return res.status(400).json({ message: "Invalid food item." });
+    const quantitiesByFoodId = new Map();
+    for (const item of items) {
+      const key = String(item.foodId);
+      const quantity = (quantitiesByFoodId.get(key) || 0) + item.quantity;
+      if (quantity > 50)
+        return res.status(400).json({ message: "Food unavailable or quantity invalid." });
+      quantitiesByFoodId.set(key, quantity);
+    }
     const foods = await Food.find({
       _id: { $in: items.map((i) => i.foodId) },
       available: true,
@@ -28,7 +52,7 @@ export async function createOrder(req, res, next) {
     const clean = [];
     for (const i of items) {
       const f = byId.get(String(i.foodId)),
-        q = Number(i.quantity);
+        q = i.quantity;
       if (!f || !Number.isInteger(q) || q < 1 || q > 50)
         return res
           .status(400)
@@ -46,10 +70,10 @@ export async function createOrder(req, res, next) {
     }
     const total = clean.reduce((s, i) => s + i.price * i.quantity, 0);
     const order = await Order.create({
-      customerName,
-      phone,
+      customerName: customerName.trim(),
+      phone: phone.trim(),
       fulfillment,
-      address: address.trim(),
+      address: orderAddress,
       paymentMethod: "cash",
       items: clean,
       total,

@@ -16,9 +16,21 @@ const item = new mongoose.Schema(
 const schema = new mongoose.Schema(
   {
     customerName: { type: String, required: true, trim: true },
-    phone: { type: String, required: true, trim: true },
+    phone: {
+      type: String,
+      required: true,
+      trim: true,
+      match: [/^(?:09\d{9}|\+639\d{9}|639\d{9})$/, "Enter a valid Philippine mobile number."],
+    },
     fulfillment: { type: String, enum: ["pickup", "delivery"], required: true },
-    address: { type: String, required: true, trim: true },
+    address: {
+      type: String,
+      trim: true,
+      default: "",
+      required: function () {
+        return this.fulfillment === "delivery";
+      },
+    },
     paymentMethod: { type: String, default: "cash", enum: ["cash"] },
     items: { type: [item], validate: (v) => v.length > 0 },
     total: { type: Number, required: true, min: 0 },
