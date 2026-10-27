@@ -7545,3 +7545,195 @@ footer {
   .admin-sales-period, .admin-sales-period select { width: 100%; }
   .admin-sales-metrics { grid-template-columns: 1fr; }
 }
+
+@media (max-width: 1000px) {
+  .admin-dashboard,
+  .admin-dashboard.admin-sidebar-collapsed {
+    grid-template-columns: 170px minmax(0, 1fr);
+  }
+
+  .admin-dashboard-content {
+    padding-inline: clamp(14px, 2vw, 24px);
+  }
+}
+
+@media (max-width: 900px) and (min-width: 761px) {
+  .admin-stat-grid,
+  .admin-order-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-workspace-overlay {
+    padding: max(8px, env(safe-area-inset-top)) 8px max(8px, env(safe-area-inset-bottom));
+  }
+
+  .modal.admin-workspace {
+    height: calc(100vh - 16px);
+    height: calc(100dvh - max(16px, env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+    max-height: 100%;
+  }
+
+  .admin-dashboard,
+  .admin-dashboard.admin-sidebar-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .admin-sidebar,
+  .admin-sidebar-collapsed .admin-sidebar {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    overflow: visible;
+    padding: 8px;
+  }
+
+  .admin-sidebar-brand,
+  .admin-sidebar-collapsed .admin-sidebar-brand {
+    grid-column: 1 / -1;
+    min-width: 0;
+    min-height: 34px;
+    justify-content: flex-start;
+    margin: 0 0 2px;
+    padding: 0 2px 6px;
+    border-bottom: 1px solid rgb(255 255 255 / 12%);
+  }
+
+  .admin-sidebar-brand .admin-sidebar-mark,
+  .admin-sidebar-collapsed .admin-sidebar-brand .admin-sidebar-mark {
+    width: 28px;
+    height: 28px;
+    flex-basis: 28px;
+  }
+
+  .admin-sidebar-wordmark,
+  .admin-sidebar-collapsed .admin-sidebar-wordmark {
+    display: grid;
+  }
+
+  .admin-sidebar-label,
+  .admin-sidebar-note {
+    display: none;
+  }
+
+  .admin-sidebar-link,
+  .admin-sidebar-collapsed .admin-sidebar-link {
+    position: relative;
+    width: 100%;
+    min-width: 0;
+    min-height: 38px;
+    justify-content: center;
+    gap: 5px;
+    margin: 0;
+    padding: 0 5px;
+    font-size: clamp(9px, 2.6vw, 11px);
+    white-space: nowrap;
+  }
+
+  .admin-sidebar-link > span {
+    width: auto;
+    font-size: 13px;
+  }
+
+  .admin-sidebar-link small,
+  .admin-sidebar-collapsed .admin-sidebar-link small {
+    position: absolute;
+    top: 1px;
+    right: 2px;
+    min-width: 16px;
+    height: 16px;
+    margin: 0;
+    font-size: 9px;
+  }
+
+  .admin-sidebar-logout,
+  .admin-sidebar-collapsed .admin-sidebar-logout {
+    width: 100%;
+    min-width: 0;
+    min-height: 38px;
+    justify-content: center;
+    gap: 5px;
+    margin: 0;
+    padding: 0 5px;
+    font-size: 10px;
+  }
+
+  .admin-sidebar-logout > span {
+    font-size: 13px;
+  }
+
+  .admin-topbar {
+    min-width: 0;
+    padding-right: 58px;
+  }
+
+  .admin-topbar-caption {
+    min-width: 0;
+    overflow: hidden;
+    font-size: 10px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .admin-dashboard-content {
+    min-width: 0;
+    overscroll-behavior: contain;
+  }
+
+  .admin-stat-grid,
+  .admin-order-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-orders-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-orders-toolbar > input {
+    grid-column: auto;
+  }
+
+  .admin-date-range {
+    grid-column: auto;
+  }
+
+  .admin-table-wrap {
+    max-width: 100%;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (max-width: 380px) {
+  .admin-workspace-overlay {
+    padding-inline: 4px;
+  }
+
+  .modal.admin-workspace {
+    border-radius: 10px;
+  }
+
+  .admin-dashboard-content {
+    padding-inline: 8px;
+  }
+
+  .admin-section-card,
+  .admin-food-form {
+    padding: 10px;
+  }
+
+  .admin-sidebar,
+  .admin-sidebar-collapsed .admin-sidebar {
+    gap: 4px;
+    padding: 6px;
+  }
+
+  .admin-sidebar-link,
+  .admin-sidebar-collapsed .admin-sidebar-link {
+    gap: 3px;
+    padding-inline: 2px;
+  }
+}
