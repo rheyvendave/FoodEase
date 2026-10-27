@@ -247,6 +247,10 @@ export default function App() {
   const [adminLoginNotice, setAdminLoginNotice] = useState('');
   const [tab, setTab] = useState('foods');
   const [orders, setOrders] = useState([]);
+  const [salesPeriod, setSalesPeriod] = useState('today');
+  const [salesSummary, setSalesSummary] = useState({ completedOrders: 0, totalSales: 0 });
+  const [salesSummaryLoading, setSalesSummaryLoading] = useState(false);
+  const salesSummarySequence = useRef(0);
   const [adminSearch, setAdminSearch] = useState('');
   const [adminCategory, setAdminCategory] = useState('All categories');
   const [orderSearch, setOrderSearch] = useState('');
@@ -335,6 +339,14 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [admin, checkout, mobileMenuOpen, chatOpen, receipt]);
+
+  useEffect(() => {
+    if (!admin || !token || tab !== 'overview') return undefined;
+    loadSalesSummary(salesPeriod);
+    return () => {
+      salesSummarySequence.current += 1;
+    };
+  }, [admin, token, tab, salesPeriod]);
 
   const cats = useMemo(
     () => ['All', ...new Set(foods.map(food => food.category))],
@@ -703,6 +715,19 @@ const availableFoods = foods.filter(food => food.available);
     }
   }
 
+  async function loadSalesSummary(period = salesPeriod) {
+    const requestSequence = ++salesSummarySequence.current;
+    setSalesSummaryLoading(true);
+    try {
+      const summary = await api(`/orders/sales-summary?period=${encodeURIComponent(period)}`, {}, token);
+      if (requestSequence === salesSummarySequence.current) setSalesSummary(summary);
+    } catch (error) {
+      if (requestSequence === salesSummarySequence.current) setMsg(error.message);
+    } finally {
+      if (requestSequence === salesSummarySequence.current) setSalesSummaryLoading(false);
+    }
+  }
+
   async function loadStoreProfile() {
     const requestSequence = ++profileLoadSequence.current;
     try {
@@ -742,7 +767,7 @@ const availableFoods = foods.filter(food => food.available);
         method: 'PATCH',
         body: JSON.stringify({ status: nextStatus })
       }, token);
-      loadOrders();
+      await Promise.all([loadOrders(), loadSalesSummary()]);
     } catch (error) {
       setMsg(error.message);
     }
@@ -1216,6 +1241,34 @@ const availableFoods = foods.filter(food => food.available);
                           ))}
                         </div>
 
+                        <section className="admin-section-card admin-sales-summary">
+                          <div className="admin-section-heading">
+                            <div>
+                              <span className="admin-section-kicker">COMPLETED ORDERS</span>
+                              <h3>Sales summary</h3>
+                              <p>Sales are counted when an order is marked completed.</p>
+                            </div>
+                            <label className="admin-sales-period">
+                              <span className="visually-hidden">Sales date range</span>
+                              <select value={salesPeriod} onChange={event => setSalesPeriod(event.target.value)}>
+                                <option value="today">Today</option>
+                                <option value="last7days">Last 7 days</option>
+                                <option value="thisMonth">This month</option>
+                              </select>
+                            </label>
+                          </div>
+                          <div className="admin-sales-metrics" aria-live="polite">
+                            <article>
+                              <span>Total sales</span>
+                              <b>{salesSummaryLoading ? 'Loading...' : peso(salesSummary.totalSales)}</b>
+                            </article>
+                            <article>
+                              <span>Completed orders</span>
+                              <b>{salesSummaryLoading ? '...' : salesSummary.completedOrders}</b>
+                            </article>
+                          </div>
+                        </section>
+
                         <section className="admin-section-card">
                           <div className="admin-section-heading">
                             <div><span className="admin-section-kicker">LATEST ACTIVITY</span><h3>Recent orders</h3></div>
@@ -1326,6 +1379,35 @@ const availableFoods = foods.filter(food => food.available);
                           ].map(([label, value, icon, className]) => <article className={`admin-stat-card ${className}`} key={label}><span aria-hidden="true">{icon}</span><div><small>{label}</small><b>{value}</b></div></article>)}
                           </div>
                         </div>
+
+                        <section className="admin-section-card admin-sales-summary">
+                          <div className="admin-section-heading">
+                            <div>
+                              <span className="admin-section-kicker">COMPLETED ORDERS</span>
+                              <h3>Sales summary</h3>
+                              <p>Sales are counted when an order is marked completed.</p>
+                            </div>
+                            <label className="admin-sales-period">
+                              <span className="visually-hidden">Sales date range</span>
+                              <select value={salesPeriod} onChange={event => setSalesPeriod(event.target.value)}>
+                                <option value="today">Today</option>
+                                <option value="last7days">Last 7 days</option>
+                                <option value="thisMonth">This month</option>
+                              </select>
+                            </label>
+                          </div>
+                          <div className="admin-sales-metrics" aria-live="polite">
+                            <article>
+                              <span>Total sales</span>
+                              <b>{salesSummaryLoading ? 'Loading...' : peso(salesSummary.totalSales)}</b>
+                            </article>
+                            <article>
+                              <span>Completed orders</span>
+                              <b>{salesSummaryLoading ? '...' : salesSummary.completedOrders}</b>
+                            </article>
+                          </div>
+                        </section>
+
                         <section className="admin-section-card">
                           <div className="admin-orders-toolbar">
                             <input aria-label="Search orders" placeholder="Search by order number, customer name, or food item..." value={orderSearch} onChange={event => setOrderSearch(event.target.value)} />

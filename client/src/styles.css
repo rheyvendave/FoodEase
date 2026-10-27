@@ -7513,3 +7513,25 @@ footer {
     align-items: flex-start;
   }
 }
+
+.admin-sales-summary { margin: 20px 0; }
+.admin-sales-summary .admin-section-heading > div p { margin: 5px 0 0; color: #78827b; font: 12px 'DM Sans', sans-serif; }
+.admin-sales-period select {
+  min-width: 150px;
+  min-height: 42px;
+  padding: 8px 34px 8px 12px;
+  border: 1px solid #dfe7df;
+  border-radius: 9px;
+  color: #31523a;
+  background: #fff;
+  font: 600 13px 'DM Sans', sans-serif;
+}
+.admin-sales-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 20px; }
+.admin-sales-metrics article { display: grid; gap: 8px; padding: 18px; border: 1px solid #e8eee8; border-radius: 12px; background: #f8fbf8; }
+.admin-sales-metrics article span { color: #68766e; font: 600 12px 'DM Sans', sans-serif; }
+.admin-sales-metrics article b { color: #285138; font: 700 24px 'DM Sans', sans-serif; }
+@media (max-width: 560px) {
+  .admin-sales-summary .admin-section-heading { flex-direction: column; gap: 14px; }
+  .admin-sales-period, .admin-sales-period select { width: 100%; }
+  .admin-sales-metrics { grid-template-columns: 1fr; }
+}

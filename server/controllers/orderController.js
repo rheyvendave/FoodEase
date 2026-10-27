@@ -121,6 +121,55 @@ export async function listOrders(_req, res, next) {
     next(e);
   }
 }
+
+export function getSalesPeriodRange(period, now = new Date()) {
+  if (!["today", "last7days", "thisMonth"].includes(period)) return null;
+  const dateParts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(now);
+  const values = Object.fromEntries(dateParts.map(({ type, value }) => [type, value]));
+  const year = Number(values.year);
+  const month = Number(values.month);
+  const day = Number(values.day);
+  const manilaOffset = 8 * 60 * 60 * 1000;
+  const dayMs = 24 * 60 * 60 * 1000;
+  let startAt = Date.UTC(year, month - 1, day) - manilaOffset;
+  if (period === "last7days") startAt -= 6 * dayMs;
+  if (period === "thisMonth") startAt = Date.UTC(year, month - 1, 1) - manilaOffset;
+  return { from: new Date(startAt), to: now };
+}
+
+export async function getSalesSummary(req, res, next) {
+  try {
+    const range = getSalesPeriodRange(req.query.period);
+    if (!range)
+      return res.status(400).json({ message: "Choose today, the last 7 days, or this month." });
+    const [summary] = await Order.aggregate([
+      { $match: { status: "Completed" } },
+      { $addFields: { salesDate: { $ifNull: ["$completedAt", "$createdAt"] } } },
+      { $match: { salesDate: { $gte: range.from, $lte: range.to } } },
+      {
+        $group: {
+          _id: null,
+          completedOrders: { $sum: 1 },
+          totalSales: { $sum: "$total" },
+        },
+      },
+    ]);
+    res.set("Cache-Control", "no-store");
+    return res.json({
+      period: req.query.period,
+      completedOrders: summary?.completedOrders || 0,
+      totalSales: summary?.totalSales || 0,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 export async function updateOrderStatus(req, res, next) {
   try {
     const allowed = [
@@ -136,9 +185,18 @@ export async function updateOrderStatus(req, res, next) {
       return res.status(400).json({ message: "Invalid order ID." });
     if (!allowed.includes(req.body?.status))
       return res.status(400).json({ message: "Invalid status." });
+    const currentOrder = await Order.findById(req.params.id);
+    if (!currentOrder) return res.status(404).json({ message: "Order not found." });
+    const update = { $set: { status: req.body.status } };
+    if (req.body.status === "Completed") {
+      if (currentOrder.status !== "Completed")
+        update.$set.completedAt = new Date();
+    } else if (currentOrder.status === "Completed") {
+      update.$unset = { completedAt: "" };
+    }
     const o = await Order.findByIdAndUpdate(
       req.params.id,
-      { status: req.body.status },
+      update,
       { new: true, runValidators: true },
     );
     if (!o) return res.status(404).json({ message: "Order not found." });

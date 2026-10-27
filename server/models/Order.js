@@ -56,7 +56,9 @@ const schema = new mongoose.Schema(
       ],
       default: "Pending",
     },
+    completedAt: { type: Date, default: null },
   },
   { timestamps: true },
 );
+schema.index({ status: 1, completedAt: 1 });
 export default mongoose.model("Order", schema);

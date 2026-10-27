@@ -11,6 +11,8 @@ To load the starter menu into an empty database, run `npm run seed:menu` from th
 
 To enable Groq-powered Kain-Bot, set `GROQ_API_KEY` in the server environment. Keep the key on the backend only; never add it to the client or commit it. `GROQ_MODEL` optionally selects a Groq chat-completions model and defaults to `openai/gpt-oss-120b`. Without a configured key, Kain-Bot continues to use its built-in menu-based answers.
 
+The admin dashboard includes completed-order sales totals for today, the last 7 days, or the current month, using the FoodEase branch's Manila timezone.
+
 This is a learning starter. Configure secure secrets before use and do not expose `.env` files.
 
 ## Deploy to Vercel

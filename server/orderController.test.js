@@ -3,10 +3,35 @@ import assert from 'node:assert/strict';
 import express from 'express';
 import Food from './models/Food.js';
 import Order from './models/Order.js';
-import { createOrder } from './controllers/orderController.js';
+import {
+  createOrder,
+  getSalesPeriodRange,
+  getSalesSummary,
+  updateOrderStatus
+} from './controllers/orderController.js';
 
 const foodId = '507f1f77bcf86cd799439011';
 const address = '12 Main Street, Mambajao, Maasin City';
+
+function responseStub() {
+  return {
+    statusCode: 200,
+    body: null,
+    headers: {},
+    status(code) {
+      this.statusCode = code;
+      return this;
+    },
+    set(name, value) {
+      this.headers[name.toLowerCase()] = value;
+      return this;
+    },
+    json(body) {
+      this.body = body;
+      return this;
+    }
+  };
+}
 
 async function startOrderServer(t) {
   const app = express();
@@ -41,6 +66,108 @@ test('accepts pickup orders without an address', async t => {
 
   assert.equal(response.status, 201);
   assert.equal(createOrderMock.mock.calls[0].arguments[0].address, '');
+});
+
+test('builds today, rolling seven-day, and current-month ranges in Manila time', () => {
+  const now = new Date('2026-03-15T12:30:00.000Z');
+
+  assert.deepEqual(getSalesPeriodRange('today', now), {
+    from: new Date('2026-03-14T16:00:00.000Z'),
+    to: now
+  });
+  assert.deepEqual(getSalesPeriodRange('last7days', now), {
+    from: new Date('2026-03-08T16:00:00.000Z'),
+    to: now
+  });
+  assert.deepEqual(getSalesPeriodRange('thisMonth', now), {
+    from: new Date('2026-02-28T16:00:00.000Z'),
+    to: now
+  });
+  assert.equal(getSalesPeriodRange('lastMonth', now), null);
+});
+
+test('sales summary aggregates completed orders in the selected range', async t => {
+  const aggregate = t.mock.method(Order, 'aggregate', async () => [{
+    completedOrders: 3,
+    totalSales: 750
+  }]);
+  const res = responseStub();
+
+  await getSalesSummary({ query: { period: 'today' } }, res, error => { throw error; });
+
+  const pipeline = aggregate.mock.calls[0].arguments[0];
+  assert.equal(res.body.period, 'today');
+  assert.equal(res.body.completedOrders, 3);
+  assert.equal(res.body.totalSales, 750);
+  assert.equal(res.headers['cache-control'], 'no-store');
+  assert.deepEqual(pipeline[0], { $match: { status: 'Completed' } });
+  assert.deepEqual(pipeline[1], { $addFields: { salesDate: { $ifNull: ['$completedAt', '$createdAt'] } } });
+  assert.ok(pipeline[2].$match.salesDate.$gte instanceof Date);
+  assert.ok(pipeline[2].$match.salesDate.$lte instanceof Date);
+  assert.equal(pipeline[2].$match.salesDate.$gte.getUTCHours(), 16);
+  assert.equal(pipeline[2].$match.salesDate.$lte.getTime() <= Date.now(), true);
+  assert.equal(pipeline[3].$group.totalSales.$sum, '$total');
+});
+
+test('rejects invalid sales periods without querying orders', async t => {
+  const aggregate = t.mock.method(Order, 'aggregate');
+  const res = responseStub();
+
+  await getSalesSummary({ query: { period: 'allTime' } }, res, error => { throw error; });
+
+  assert.equal(res.statusCode, 400);
+  assert.match(res.body.message, /today, the last 7 days, or this month/);
+  assert.equal(aggregate.mock.callCount(), 0);
+});
+
+test('tracks the completion date and clears it when an order is reopened', async t => {
+  let currentStatus = 'Preparing';
+  t.mock.method(Order, 'findById', async () => ({
+    paymentMethod: 'cash',
+    status: currentStatus
+  }));
+  const updates = [];
+  t.mock.method(Order, 'findByIdAndUpdate', async (_id, update) => {
+    updates.push(update);
+    currentStatus = update.$set.status;
+    return { status: currentStatus, completedAt: update.$set.completedAt };
+  });
+
+  for (const status of ['Completed', 'Preparing']) {
+    const res = responseStub();
+    await updateOrderStatus({
+      params: { id: '507f1f77bcf86cd799439011' },
+      body: { status }
+    }, res, error => { throw error; });
+    assert.equal(res.statusCode, 200);
+  }
+
+  assert.ok(updates[0].$set.completedAt instanceof Date);
+  assert.ok(Number.isFinite(updates[0].$set.completedAt.getTime()));
+  assert.deepEqual(updates[1], {
+    $set: { status: 'Preparing' },
+    $unset: { completedAt: '' }
+  });
+});
+
+test('preserves the original completion date when status remains Completed', async t => {
+  const completedAt = new Date('2026-03-10T12:00:00.000Z');
+  t.mock.method(Order, 'findById', async () => ({
+    paymentMethod: 'cash',
+    status: 'Completed',
+    completedAt
+  }));
+  const updateOrder = t.mock.method(Order, 'findByIdAndUpdate', async (_id, update) => update);
+  const res = responseStub();
+
+  await updateOrderStatus({
+    params: { id: '507f1f77bcf86cd799439011' },
+    body: { status: 'Completed' }
+  }, res, error => { throw error; });
+
+  assert.deepEqual(updateOrder.mock.calls[0].arguments[1], {
+    $set: { status: 'Completed' }
+  });
 });
 
 test('accepts full names with accents and common name punctuation', async t => {
