@@ -200,6 +200,9 @@ export default function App() {
   const [adminLoginNotice, setAdminLoginNotice] = useState('');
   const [tab, setTab] = useState('foods');
   const [orders, setOrders] = useState([]);
+  const [editingOrder, setEditingOrder] = useState(null);
+  const [orderEditDraft, setOrderEditDraft] = useState({ customerName: '', phone: '', address: '' });
+  const [orderEditSaving, setOrderEditSaving] = useState(false);
   const [salesPeriod, setSalesPeriod] = useState('today');
   const [salesSummary, setSalesSummary] = useState({ completedOrders: 0, totalSales: 0 });
   const [salesSummaryLoading, setSalesSummaryLoading] = useState(false);
@@ -281,20 +284,24 @@ export default function App() {
   }, [msg, toastRevision]);
 
   useEffect(() => {
-    if (!admin && !checkout && !mobileMenuOpen && !chatOpen) return undefined;
+    if (!admin && !checkout && !mobileMenuOpen && !chatOpen && !editingOrder) return undefined;
 
     function handleKeyDown(event) {
       if (event.key === 'Escape') {
-        setAdmin(false);
-        setCheckout(false);
-        setMobileMenuOpen(false);
-        setChatOpen(false);
+        if (editingOrder) {
+          setEditingOrder(null);
+        } else {
+          setAdmin(false);
+          setCheckout(false);
+          setMobileMenuOpen(false);
+          setChatOpen(false);
+        }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [admin, checkout, mobileMenuOpen, chatOpen, receipt]);
+  }, [admin, checkout, mobileMenuOpen, chatOpen, receipt, editingOrder]);
 
   useEffect(() => {
     if (!admin || !token || tab !== 'overview') return undefined;
@@ -680,6 +687,62 @@ const availableFoods = foods.filter(food => food.available);
     }
   }
 
+  function editOrder(order) {
+    setEditingOrder(order);
+    setOrderEditDraft({
+      customerName: order.customerName,
+      phone: order.phone,
+      address: order.address || ''
+    });
+  }
+
+  async function saveOrderCustomerDetails(event) {
+    event.preventDefault();
+    if (!editingOrder || orderEditSaving) return;
+    const customerName = orderEditDraft.customerName.trim().replace(/\s+/g, ' ');
+    const phone = orderEditDraft.phone.trim();
+    const address = orderEditDraft.address.trim();
+    if (!isValidFullName(customerName)) {
+      setMsg('Enter the customer’s first and last name.');
+      return;
+    }
+    if (!isValidPhilippineMobileNumber(phone)) {
+      setMsg('Enter a valid Philippine mobile number.');
+      return;
+    }
+    if (editingOrder.fulfillment === 'delivery' && !address) {
+      setMsg('A delivery address is required.');
+      return;
+    }
+    setOrderEditSaving(true);
+    try {
+      const updatedOrder = await api(`/orders/${editingOrder._id}/customer`, {
+        method: 'PATCH',
+        body: JSON.stringify({ customerName, phone, address })
+      }, token);
+      setOrders(current => current.map(order => order._id === updatedOrder._id ? updatedOrder : order));
+      setEditingOrder(null);
+      setMsg(`Customer details updated for order #${updatedOrder._id.slice(-6).toUpperCase()}`);
+    } catch (error) {
+      setMsg(error.message);
+    } finally {
+      setOrderEditSaving(false);
+    }
+  }
+
+  async function deleteOrder(order) {
+    const reference = order._id.slice(-6).toUpperCase();
+    if (!window.confirm(`Permanently delete order #${reference} for ${order.customerName}? This cannot be undone.`)) return;
+    try {
+      await api(`/orders/${order._id}`, { method: 'DELETE' }, token);
+      setOrders(current => current.filter(item => item._id !== order._id));
+      if (order.status === 'Completed') await loadSalesSummary();
+      setMsg(`Order #${reference} permanently deleted`);
+    } catch (error) {
+      setMsg(error.message);
+    }
+  }
+
   async function loadSalesSummary(period = salesPeriod) {
     const requestSequence = ++salesSummarySequence.current;
     setSalesSummaryLoading(true);
@@ -989,6 +1052,32 @@ const availableFoods = foods.filter(food => food.available);
                 </form>
               </>
             )}
+          </section>
+        </div>
+      )}
+
+      {editingOrder && (
+        <div className="overlay admin-order-editor-overlay" onClick={() => !orderEditSaving && setEditingOrder(null)}>
+          <section className="modal admin-order-editor" role="dialog" aria-modal="true" aria-labelledby="order-editor-title" onClick={event => event.stopPropagation()}>
+            <button className="close" aria-label="Close order editor" disabled={orderEditSaving} onClick={() => setEditingOrder(null)}>×</button>
+            <small className="eyebrow">CUSTOMER CONFIRMATION</small>
+            <h2 id="order-editor-title">Edit order <em>details</em></h2>
+            <p className="admin-order-editor-note">Contact the customer and confirm the correct details before saving.</p>
+            <form className="admin-profile-form" onSubmit={saveOrderCustomerDetails}>
+              <label>Customer name
+                <input required maxLength={100} autoComplete="name" value={orderEditDraft.customerName} onChange={event => setOrderEditDraft({ ...orderEditDraft, customerName: event.target.value })} />
+              </label>
+              <label>Phone number
+                <input required type="tel" inputMode="tel" autoComplete="tel" value={orderEditDraft.phone} onChange={event => setOrderEditDraft({ ...orderEditDraft, phone: event.target.value })} />
+              </label>
+              <label>Address{editingOrder.fulfillment === 'delivery' ? '' : ' (optional)'}
+                <textarea required={editingOrder.fulfillment === 'delivery'} maxLength={250} autoComplete="street-address" value={orderEditDraft.address} onChange={event => setOrderEditDraft({ ...orderEditDraft, address: event.target.value })} />
+              </label>
+              <div className="admin-profile-form-actions">
+                <button className="admin-primary-button" disabled={orderEditSaving}>{orderEditSaving ? 'Saving...' : 'Save customer details'}</button>
+                <button className="admin-secondary-button" type="button" disabled={orderEditSaving} onClick={() => setEditingOrder(null)}>Cancel</button>
+              </div>
+            </form>
           </section>
         </div>
       )}
@@ -1392,7 +1481,7 @@ const availableFoods = foods.filter(food => food.available);
                             </div>
                           </div>
                           {filteredOrders.length ? <div className="admin-table-wrap"><table className="admin-table admin-orders-table">
-                            <thead><tr><th>Order #</th><th>Customer</th><th>Items</th><th>Total amount</th><th>Payment method</th><th>Status</th><th>Order date</th></tr></thead>
+                            <thead><tr><th>Order #</th><th>Customer</th><th>Items</th><th>Total amount</th><th>Payment method</th><th>Status</th><th>Order date</th><th>Actions</th></tr></thead>
                             <tbody>{filteredOrders.map(order => <tr key={order._id}>
                               <td><b>#{order._id.slice(-6).toUpperCase()}</b><small>{order.fulfillment}</small></td>
                               <td className="admin-order-customer"><b>{order.customerName}</b><small>{order.phone}</small>{order.fulfillment === 'delivery' && <small className="admin-order-address"><strong>Address:</strong> {order.address || 'Not provided'}</small>}</td>
@@ -1403,6 +1492,10 @@ const availableFoods = foods.filter(food => food.available);
                                 {['Pending', 'Confirmed', 'Preparing', 'Ready', 'Out for delivery', 'Completed', 'Cancelled'].map(item => <option key={item}>{item}</option>)}
                               </select></td>
                               <td>{new Date(order.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
+                              <td><div className="admin-table-actions">
+                                <button aria-label={`Edit customer details for order ${order._id.slice(-6)}`} onClick={() => editOrder(order)}>Edit</button>
+                                <button className="admin-delete-button" aria-label={`Permanently delete order ${order._id.slice(-6)}`} onClick={() => deleteOrder(order)}>Delete</button>
+                              </div></td>
                             </tr>)}</tbody>
                           </table></div> : <p className="admin-empty-state">{orders.length ? 'No orders match those filters.' : 'No orders yet. New customer orders will appear here.'}</p>}
                         </section>

@@ -205,3 +205,52 @@ export async function updateOrderStatus(req, res, next) {
     next(e);
   }
 }
+
+export async function updateOrderCustomerDetails(req, res, next) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id))
+      return res.status(400).json({ message: "Invalid order ID." });
+    if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)
+      || Object.keys(req.body).some((field) => !["customerName", "phone", "address"].includes(field)))
+      return res.status(400).json({ message: "Invalid customer details." });
+    const customerName = typeof req.body.customerName === "string"
+      ? req.body.customerName.trim().replace(/\s+/g, " ")
+      : "";
+    if (!FULL_NAME.test(customerName) || customerName.length > 100)
+      return res.status(400).json({
+        message: "Enter the customer's first and last name using letters. Spaces, hyphens, and apostrophes are allowed.",
+      });
+    if (typeof req.body.phone !== "string" || !PHILIPPINE_MOBILE_NUMBER.test(req.body.phone.trim()))
+      return res.status(400).json({
+        message: "Enter a valid Philippine mobile number (09171234567, +639171234567, or 639171234567).",
+      });
+    if (typeof req.body.address !== "string" || req.body.address.trim().length > 250)
+      return res.status(400).json({ message: "The address must be 250 characters or fewer." });
+    const currentOrder = await Order.findById(req.params.id);
+    if (!currentOrder) return res.status(404).json({ message: "Order not found." });
+    const address = req.body.address.trim();
+    if (currentOrder.fulfillment === "delivery" && !address)
+      return res.status(400).json({ message: "A delivery address is required." });
+    const order = await Order.findByIdAndUpdate(
+      req.params.id,
+      { $set: { customerName, phone: req.body.phone.trim(), address } },
+      { new: true, runValidators: true },
+    );
+    if (!order) return res.status(404).json({ message: "Order not found." });
+    return res.json(order);
+  } catch (error) {
+    return next(error);
+  }
+}
+
+export async function deleteOrder(req, res, next) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id))
+      return res.status(400).json({ message: "Invalid order ID." });
+    const order = await Order.findByIdAndDelete(req.params.id);
+    if (!order) return res.status(404).json({ message: "Order not found." });
+    return res.json({ message: "Order permanently deleted.", orderId: String(order._id) });
+  } catch (error) {
+    return next(error);
+  }
+}

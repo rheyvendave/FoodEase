@@ -5,8 +5,10 @@ import Food from './models/Food.js';
 import Order from './models/Order.js';
 import {
   createOrder,
+  deleteOrder,
   getSalesPeriodRange,
   getSalesSummary,
+  updateOrderCustomerDetails,
   updateOrderStatus
 } from './controllers/orderController.js';
 
@@ -168,6 +170,67 @@ test('preserves the original completion date when status remains Completed', asy
   assert.deepEqual(updateOrder.mock.calls[0].arguments[1], {
     $set: { status: 'Completed' }
   });
+});
+
+test('updates validated admin-corrected customer details without changing order totals', async t => {
+  const currentOrder = { fulfillment: 'delivery' };
+  const updatedOrder = { _id: foodId, customerName: 'Jane Doe', phone: '09123456789', address };
+  t.mock.method(Order, 'findById', async () => currentOrder);
+  const updateOrder = t.mock.method(Order, 'findByIdAndUpdate', async () => updatedOrder);
+  const res = responseStub();
+
+  await updateOrderCustomerDetails({
+    params: { id: foodId },
+    body: { customerName: '  Jane   Doe ', phone: ' 09123456789 ', address: ` ${address} ` }
+  }, res, error => { throw error; });
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body, updatedOrder);
+  assert.deepEqual(updateOrder.mock.calls[0].arguments[1], {
+    $set: { customerName: 'Jane Doe', phone: '09123456789', address }
+  });
+  assert.deepEqual(updateOrder.mock.calls[0].arguments[2], { new: true, runValidators: true });
+});
+
+test('rejects invalid corrected customer details and requires a delivery address', async t => {
+  const findOrder = t.mock.method(Order, 'findById', async () => ({ fulfillment: 'delivery' }));
+  const updateOrder = t.mock.method(Order, 'findByIdAndUpdate');
+  const invalidUpdates = [
+    { customerName: 'Nonsense123', phone: '09123456789', address },
+    { customerName: 'Jane Doe', phone: '123', address },
+    { customerName: 'Jane Doe', phone: '09123456789', address: ' ' },
+    { customerName: 'Jane Doe', phone: '09123456789', address, total: 1 }
+  ];
+
+  for (const body of invalidUpdates) {
+    const res = responseStub();
+    await updateOrderCustomerDetails({
+      params: { id: foodId },
+      body
+    }, res, error => { throw error; });
+    assert.equal(res.statusCode, 400);
+  }
+
+  assert.equal(findOrder.mock.callCount(), 1);
+  assert.equal(updateOrder.mock.callCount(), 0);
+});
+
+test('permanently deletes an order and reports missing records', async t => {
+  const deletedOrder = { _id: foodId };
+  const findByIdAndDelete = t.mock.method(Order, 'findByIdAndDelete', async () => deletedOrder);
+  const res = responseStub();
+
+  await deleteOrder({ params: { id: foodId } }, res, error => { throw error; });
+
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body, { message: 'Order permanently deleted.', orderId: foodId });
+  assert.equal(findByIdAndDelete.mock.calls[0].arguments[0], foodId);
+
+  findByIdAndDelete.mock.mockImplementation(async () => null);
+  const missingRes = responseStub();
+  await deleteOrder({ params: { id: foodId } }, missingRes, error => { throw error; });
+  assert.equal(missingRes.statusCode, 404);
+  assert.match(missingRes.body.message, /not found/);
 });
 
 test('accepts full names with accents and common name punctuation', async t => {

@@ -6617,6 +6617,13 @@ footer {
   background: #fff4f2;
 }
 
+.admin-order-editor-overlay { z-index: 31; }
+.admin-order-editor { width: min(460px, 100%); }
+.admin-order-editor h2 { margin: 6px 0; color: #1c4932; font-size: 24px; }
+.admin-order-editor-note { margin: 0; color: #68766e; font-size: 12px; line-height: 1.5; }
+.admin-order-editor .admin-profile-form { margin-top: 16px; }
+.admin-order-editor .admin-profile-form-actions { margin-top: 4px; }
+
 .admin-orders-table td {
   min-width: 82px;
 }
