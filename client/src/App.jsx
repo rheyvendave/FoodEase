@@ -268,7 +268,7 @@ const availableFoods = foods.filter(food => food.available);
     return 'english';
   }
 
-  function getChatAnswer(question) {
+  function getChatAnswer(question, history = []) {
     const query = question.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w\s₱]/g, ' ');
     const language = chatLanguage === 'auto' ? detectChatLanguage(question) : chatLanguage;
     const categories = [...new Set(availableFoods.map(food => food.category).filter(Boolean))];
@@ -279,7 +279,14 @@ const availableFoods = foods.filter(food => food.available);
       .every(categoryWord => queryWords.some(word =>
         word === categoryWord || word === `${categoryWord}s` || categoryWord === `${word}s`
       )));
-    const matchedFood = foods.find(food => query.includes(food.name.toLowerCase()));
+    const directFood = foods.find(food => query.includes(food.name.toLowerCase()));
+    const matchedFood = directFood || (/\b(it|that|this|there|those|them|same|one|its|price|how much)\b/.test(query)
+      ? [...history]
+        .reverse()
+        .filter(message => message.from === 'user')
+        .map(message => foods.find(food => message.text.toLowerCase().includes(food.name.toLowerCase())))
+        .find(Boolean)
+      : null);
     const budgetIntent = /(budget|under|below|within|around|spend|limit|for ₱|for php|may ₱|sa halagang|budget ko|budget nako|only have|got)\b/i.test(question)
       || /\bfor\s+(?:₱\s*)?\d/i.test(question);
     const currencyBudget = question.match(/(?:₱|php\s*)(\d+(?:\.\d{1,2})?)|(\d+(?:\.\d{1,2})?)\s*(?:php|pesos?|peso)\b/i);
@@ -362,7 +369,7 @@ const availableFoods = foods.filter(food => food.available);
       }
       if (language === 'tagalog') return `${matchedFood.name} (${matchedFood.category}) ay available sa halagang ${peso(matchedFood.price)}. ${matchedFood.description}`;
       if (language === 'bisaya') return `${matchedFood.name} (${matchedFood.category}) available sa kantidad nga ${peso(matchedFood.price)}. ${matchedFood.description}`;
-      return `${matchedFood.name} (${matchedFood.category}) is available for ${peso(matchedFood.price)}. ${matchedFood.description}`;
+      return `${matchedFood.name} is ${peso(matchedFood.price)}.${matchedFood.description ? ` ${matchedFood.description}` : ''}`;
     }
 
     if (/(price|cost|how much|presyo|magkano|pila|tagpila)/.test(query)) {
@@ -439,15 +446,10 @@ const availableFoods = foods.filter(food => food.available);
       });
       setChatMessages(messages => [...messages, { from: 'bot', text: result.answer }]);
     } catch (error) {
-      const language = chatLanguage === 'auto' ? detectChatLanguage(text) : chatLanguage;
-      const offlineNotice = language === 'tagalog'
-        ? 'Hindi ko maabot ang live chat ngayon, pero matutulungan pa rin kita:\n'
-        : language === 'bisaya'
-          ? 'Dili nako maabot ang live chat karon, pero makatabang gihapon ko:\n'
-          : 'I can’t reach the live chat service right now, but I can still help:\n';
+      console.error('FoodEase chat request failed; replying with the menu helper.', error);
       setChatMessages(messages => [
         ...messages,
-        { from: 'bot', text: `${offlineNotice}${getChatAnswer(text)}` }
+        { from: 'bot', text: getChatAnswer(text, chatMessages) }
       ]);
     } finally {
       setChatLoading(false);

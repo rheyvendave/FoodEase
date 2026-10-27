@@ -59,6 +59,9 @@ test('uses recent chat context to resolve follow-up questions', () => {
   ]);
   assert.match(answer, /with Chicken Adobo/);
   assert.match(answer, /Leche Flan/);
+  assert.match(buildChatAnswer('How much is it?', 'en', menu, [
+    { role: 'user', content: 'Tell me about Chicken Adobo.' }
+  ]), /Chicken Adobo.*₱170\.00/);
 });
 
 test('automatically detects Tagalog and Bisaya replies', () => {
@@ -182,6 +185,9 @@ test('chat API sends requests to Groq and returns its response', async t => {
     assert.equal(body.messages.at(-1).content, 'What can I get for ₱150?');
     const instructions = body.messages[0].content;
     assert.match(instructions, /whatever customers ask, including general questions/);
+    assert.match(instructions, /thoughtful, natural shop assistant/);
+    assert.match(instructions, /avoid robotic disclaimers/);
+    assert.match(instructions, /use the conversation history/);
     assert.match(instructions, /Tailor suggestions to the customer’s stated taste, category, or budget/);
     assert.match(instructions, /Never invent food names, prices, drinks, ingredients, or availability/);
     return Response.json({ choices: [{ message: { content: 'Hotsilog and Turon.' } }] });
