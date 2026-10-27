@@ -202,6 +202,8 @@ export default function App() {
   const [orders, setOrders] = useState([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const ordersLoadSequence = useRef(0);
+  const [ordersRefreshMessage, setOrdersRefreshMessage] = useState('');
+  const [ordersRefreshFailed, setOrdersRefreshFailed] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
   const [orderEditDraft, setOrderEditDraft] = useState({ customerName: '', phone: '', address: '' });
   const [orderEditSaving, setOrderEditSaving] = useState(false);
@@ -686,18 +688,30 @@ const availableFoods = foods.filter(food => food.available);
     setOrdersLoading(true);
     try {
       const loadedOrders = await api('/orders', { cache: 'no-store' }, authToken);
-      if (requestSequence === ordersLoadSequence.current) setOrders(loadedOrders);
-      return true;
+      if (requestSequence === ordersLoadSequence.current) {
+        setOrders(loadedOrders);
+        return { success: true };
+      }
+      return { success: false, message: 'A newer request has already refreshed the orders.' };
     } catch (error) {
       if (requestSequence === ordersLoadSequence.current) setMsg(error.message);
-      return false;
+      else return { success: false, message: 'A newer request has already refreshed the orders.' };
+      return { success: false, message: error.message };
     } finally {
       if (requestSequence === ordersLoadSequence.current) setOrdersLoading(false);
     }
   }
 
   async function refreshOrders() {
-    if (await loadOrders()) setMsg('Orders refreshed');
+    setOrdersRefreshFailed(false);
+    setOrdersRefreshMessage('Refreshing orders…');
+    const result = await loadOrders(sessionStorage.getItem('food-token') || token);
+    if (result.success) {
+      setOrdersRefreshMessage(`Orders refreshed at ${new Date().toLocaleTimeString()}`);
+    } else {
+      setOrdersRefreshFailed(true);
+      setOrdersRefreshMessage(result.message);
+    }
   }
 
   function editOrder(order) {
@@ -1436,7 +1450,14 @@ const availableFoods = foods.filter(food => food.available);
                       <>
                         <div className="admin-orders-heading">
                           <div className="admin-page-heading">
-                            <div><span className="admin-section-kicker">ORDER MANAGEMENT</span><h2 id="admin-title">Orders</h2><p>View and manage customer orders.</p></div>
+                            <div>
+                              <span className="admin-section-kicker">ORDER MANAGEMENT</span><h2 id="admin-title">Orders</h2><p>View and manage customer orders.</p>
+                              {ordersRefreshMessage && (
+                                <p className="admin-orders-refresh-status" role={ordersRefreshFailed ? 'alert' : 'status'} aria-live="polite">
+                                  {ordersRefreshMessage}
+                                </p>
+                              )}
+                            </div>
                             <button className="admin-secondary-button" type="button" onClick={refreshOrders} disabled={ordersLoading} aria-busy={ordersLoading}>
                               Refresh
                             </button>

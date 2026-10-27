@@ -7270,6 +7270,16 @@ footer {
   margin-bottom: 5px;
 }
 
+.admin-orders-refresh-status {
+  margin: 6px 0 0;
+  color: #38734e;
+  font: 11px/1.5 'DM Sans', Arial, sans-serif;
+}
+
+.admin-orders-refresh-status[role="alert"] {
+  color: #a14e49;
+}
+
 .admin-order-stats {
   gap: 8px;
   margin: 0;
