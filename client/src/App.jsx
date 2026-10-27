@@ -51,6 +51,89 @@ const maxOrderItemQuantity = 50;
 const isValidPhilippineMobileNumber = value => /^(?:09\d{9}|\+639\d{9}|639\d{9})$/.test(value);
 const isValidFullName = value => /^(?:\p{L}[\p{L}\p{M}]*(?:['’-]\p{L}[\p{L}\p{M}]*)*)(?:\s+(?:\p{L}[\p{L}\p{M}]*(?:['’-]\p{L}[\p{L}\p{M}]*)*))+$/u.test(value);
 
+async function downloadOrderReceipt(order) {
+  const { jsPDF } = await import('jspdf');
+  const pdf = new jsPDF({ unit: 'mm', format: 'a4' });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 18;
+  const contentWidth = pageWidth - margin * 2;
+  let y = 22;
+
+  function ensureSpace(height) {
+    if (y + height > pageHeight - margin) {
+      pdf.addPage();
+      y = margin;
+    }
+  }
+
+  function addDetail(label, value) {
+    const lines = pdf.splitTextToSize(String(value || '—'), contentWidth);
+    ensureSpace(lines.length * 5 + 10);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(9);
+    pdf.setTextColor(100, 110, 100);
+    pdf.text(label, margin, y);
+    y += 5;
+    pdf.setFontSize(10);
+    pdf.setTextColor(35, 45, 35);
+    pdf.text(lines, margin, y);
+    y += lines.length * 5 + 5;
+  }
+
+  const reference = String(order._id).slice(-6).toUpperCase();
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(18);
+  pdf.setTextColor(39, 91, 44);
+  pdf.text('FoodEase Order Receipt', margin, y);
+  y += 9;
+  pdf.setFont('helvetica', 'normal');
+  pdf.setFontSize(10);
+  pdf.setTextColor(75, 85, 75);
+  pdf.text(`Order reference: ${reference}`, margin, y);
+  y += 10;
+
+  addDetail('Customer', order.customerName);
+  addDetail('Phone', order.phone);
+  addDetail('Fulfilment', order.fulfillment === 'delivery' ? 'Delivery' : 'Pickup');
+  if (order.fulfillment === 'delivery') addDetail('Delivery address', order.address);
+  addDetail('Payment', `Cash on ${order.fulfillment}`);
+  addDetail('Order date', new Date(order.createdAt || Date.now()).toLocaleString());
+
+  ensureSpace(16);
+  pdf.setDrawColor(220, 228, 216);
+  pdf.line(margin, y, pageWidth - margin, y);
+  y += 8;
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(10);
+  pdf.setTextColor(40, 50, 40);
+  pdf.text('Item', margin, y);
+  pdf.text('Amount', pageWidth - margin, y, { align: 'right' });
+  y += 7;
+
+  for (const item of order.items) {
+    const itemText = `${item.name} x ${item.quantity}`;
+    const lines = pdf.splitTextToSize(itemText, contentWidth - 28);
+    ensureSpace(lines.length * 5 + 7);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(10);
+    pdf.text(lines, margin, y);
+    pdf.text(`PHP ${(Number(item.price) * Number(item.quantity)).toFixed(2)}`, pageWidth - margin, y, { align: 'right' });
+    y += lines.length * 5 + 3;
+  }
+
+  ensureSpace(16);
+  pdf.line(margin, y, pageWidth - margin, y);
+  y += 8;
+  pdf.setFont('helvetica', 'bold');
+  pdf.setFontSize(13);
+  pdf.text('Total', margin, y);
+  pdf.text(`PHP ${Number(order.total).toFixed(2)}`, pageWidth - margin, y, { align: 'right' });
+  y += 10;
+
+  pdf.save(`FoodEase-Receipt-${reference}.pdf`);
+}
+
 async function prepareFoodImage(file) {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
     throw new Error('Choose a JPG, PNG, or WebP image.');
@@ -144,10 +227,12 @@ export default function App() {
   const [cart, setCart] = useState([]);
   const [menuQuantities, setMenuQuantities] = useState({});
   const [msg, setMsg] = useState('');
+  const [receipt, setReceipt] = useState(null);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastRevision, setToastRevision] = useState(0);
   const [checkout, setCheckout] = useState(false);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
+  const [receiptDownloading, setReceiptDownloading] = useState(false);
   const [customer, setCustomer] = useState({ customerName: '', phone: '', fulfillment: 'pickup', address: '' });
   const [nameTouched, setNameTouched] = useState(false);
   const [phoneTouched, setPhoneTouched] = useState(false);
@@ -249,7 +334,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [admin, checkout, mobileMenuOpen, chatOpen]);
+  }, [admin, checkout, mobileMenuOpen, chatOpen, receipt]);
 
   const cats = useMemo(
     () => ['All', ...new Set(foods.map(food => food.category))],
@@ -278,6 +363,7 @@ const availableFoods = foods.filter(food => food.available);
   }
 
   function detectChatLanguage(question) {
+        setReceipt(null);
     const query = question.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
     if (/\b(unsa|unsay|pila|naa|asa|unsaon|palihug|karon|salamat|lamian|kaayo|gihapon|ninyo|moy|aduna)\b/.test(query)) return 'bisaya';
     if (/\b(ano|anong|magkano|saan|paano|kailan|bakit|po|kayo|siya|ba|wala|meron|pabili|salamat|masarap|may|ninyo|gusto|pwede|para)\b/.test(query)) return 'tagalog';
@@ -525,7 +611,7 @@ const availableFoods = foods.filter(food => food.available);
       });
       setCart([]);
       setCheckout(false);
-      setMsg('Order placed! Reference ' + result.order._id.slice(-6).toUpperCase());
+      setReceipt(result.order);
     } catch (error) {
       setMsg(error.message);
     } finally {
@@ -991,6 +1077,55 @@ const availableFoods = foods.filter(food => food.available);
                     </div>
                     {adminLoginNotice && <p className="admin-login-notice" role="alert">{adminLoginNotice}</p>}
                     <button className="cta full"><span aria-hidden="true">→</span> Sign in</button>
+      {receipt && (
+        <div className="overlay receipt-overlay" onClick={() => setReceipt(null)}>
+          <section className="modal receipt-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-title" onClick={event => event.stopPropagation()}>
+            <button className="close" aria-label="Close receipt" onClick={() => setReceipt(null)}>×</button>
+            <div className="receipt-heading">
+              <small className="eyebrow">FOODEASE ORDER RECEIPT</small>
+              <h2 id="receipt-title">Thanks for your <em>order</em></h2>
+              <p>Keep this receipt as your copy.</p>
+            </div>
+            <div className="receipt-reference">
+              <span>Order reference</span>
+              <b>{String(receipt._id).slice(-6).toUpperCase()}</b>
+            </div>
+            <div className="receipt-details">
+              <p><span>Customer</span><b>{receipt.customerName}</b></p>
+              <p><span>Phone</span><b>{receipt.phone}</b></p>
+              <p><span>Fulfilment</span><b>{receipt.fulfillment === 'delivery' ? 'Delivery' : 'Pickup'}</b></p>
+              {receipt.fulfillment === 'delivery' && <p><span>Delivery address</span><b>{receipt.address}</b></p>}
+              <p><span>Payment</span><b>Cash on {receipt.fulfillment}</b></p>
+              <p><span>Order date</span><b>{new Date(receipt.createdAt || Date.now()).toLocaleString()}</b></p>
+            </div>
+            <div className="receipt-items">
+              {receipt.items.map((item, index) => (
+                <p key={`${item.foodId || item.name}-${index}`}>
+                  <span>{item.name} × {item.quantity}</span>
+                  <b>{peso(Number(item.price) * Number(item.quantity))}</b>
+                </p>
+              ))}
+            </div>
+            <div className="receipt-total"><span>Total</span><b>{peso(receipt.total)}</b></div>
+            <div className="receipt-actions">
+              <button className="cta" disabled={receiptDownloading} onClick={async () => {
+                setReceiptDownloading(true);
+                try {
+                  await downloadOrderReceipt(receipt);
+                } catch (error) {
+                  console.error('Unable to download the order receipt PDF.', error);
+                  setMsg('Could not download the receipt. Please use Print instead.');
+                } finally {
+                  setReceiptDownloading(false);
+                }
+              }}>{receiptDownloading ? 'Preparing PDF...' : 'Download PDF'}</button>
+              <button className="receipt-done" onClick={() => window.print()}>Print</button>
+              <button className="receipt-done" onClick={() => setReceipt(null)}>Done</button>
+            </div>
+          </section>
+        </div>
+      )}
+
                   </form>
                   <span className="admin-login-secure">Secure access for FoodEase owners</span>
                 </div>
