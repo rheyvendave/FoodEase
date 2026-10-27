@@ -850,7 +850,7 @@ const availableFoods = foods.filter(food => food.available);
                   <label>Full name<input required value={customer.customerName} onChange={event => setCustomer({ ...customer, customerName: event.target.value })} /></label>
                   <label>Phone number<input required value={customer.phone} onChange={event => setCustomer({ ...customer, phone: event.target.value })} /></label>
                   <label>Fulfillment<select value={customer.fulfillment} onChange={event => setCustomer({ ...customer, fulfillment: event.target.value })}><option value="pickup">Pickup</option><option value="delivery">Delivery</option></select></label>
-                  {customer.fulfillment === 'delivery' && <label>Delivery address<textarea required value={customer.address} onChange={event => setCustomer({ ...customer, address: event.target.value })} /></label>}
+                  <label>Address<input required autoComplete="street-address" value={customer.address} onChange={event => setCustomer({ ...customer, address: event.target.value })} placeholder="House number, street, barangay, city" /></label>
                   <p className="cash">💵 Cash on {customer.fulfillment}</p>
                   <button className="cta full">Place order · {peso(total)}</button>
                 </form>
@@ -1036,7 +1036,7 @@ const availableFoods = foods.filter(food => food.available);
                                 <tbody>{orders.slice(0, 5).map(order => (
                                   <tr key={order._id}>
                                     <td><b>#{order._id.slice(-6).toUpperCase()}</b><small>{new Date(order.createdAt).toLocaleDateString()}</small></td>
-                                    <td className="admin-order-customer"><b>{order.customerName}</b><small>{order.phone}</small>{order.fulfillment === 'delivery' && order.address && <small className="admin-order-address">{order.address}</small>}<small>{order.fulfillment === 'delivery' ? 'Delivery' : 'Pickup'}</small></td>
+                                    <td className="admin-order-customer"><b>{order.customerName}</b><small>{order.phone}</small><small className="admin-order-address">{order.address || 'Address not provided on this older order'}</small><small>{order.fulfillment === 'delivery' ? 'Delivery' : 'Pickup'}</small></td>
                                     <td><div className="admin-order-items">{order.items.map((item, index) => <div className="admin-order-item" key={`${item.foodId || item.name}-${index}`}><img src={getOrderItemImage(item)} alt={item.name} /><span><b>{item.name}</b><small>Qty {item.quantity} · {peso(item.price)}</small></span></div>)}</div></td>
                                     <td><b>{peso(order.total)}</b></td>
                                     <td><span className={`admin-status status-${order.status.toLowerCase().replaceAll(' ', '-')}`}>{order.status}</span></td>
@@ -1154,7 +1154,7 @@ const availableFoods = foods.filter(food => food.available);
                             <thead><tr><th>Order #</th><th>Customer</th><th>Items</th><th>Total amount</th><th>Payment method</th><th>Status</th><th>Order date</th></tr></thead>
                             <tbody>{filteredOrders.map(order => <tr key={order._id}>
                               <td><b>#{order._id.slice(-6).toUpperCase()}</b><small>{order.fulfillment}</small></td>
-                              <td className="admin-order-customer"><b>{order.customerName}</b><small>{order.phone}</small>{order.fulfillment === 'delivery' && order.address ? <small className="admin-order-address"><strong>Address:</strong> {order.address}</small> : <small>{order.fulfillment === 'delivery' ? 'Delivery address not provided' : 'Pickup order'}</small>}</td>
+                              <td className="admin-order-customer"><b>{order.customerName}</b><small>{order.phone}</small><small className="admin-order-address"><strong>Address:</strong> {order.address || 'Not provided on this older order'}</small></td>
                               <td><div className="admin-order-items">{order.items.map((item, index) => <div className="admin-order-item" key={`${item.foodId || item.name}-${index}`}><img src={getOrderItemImage(item)} alt={item.name} /><span><b>{item.name}</b><small>Qty {item.quantity} · {peso(item.price)}</small></span></div>)}</div></td>
                               <td><b>{peso(order.total)}</b></td>
                               <td><span className="admin-payment-pill">{(order.paymentMethod || 'cash').charAt(0).toUpperCase() + (order.paymentMethod || 'cash').slice(1)}</span></td>
@@ -1174,7 +1174,7 @@ const availableFoods = foods.filter(food => food.available);
                         <section className="admin-section-card">
                           <div className="admin-section-heading"><div><span className="admin-section-kicker">ORDER HISTORY</span><h3>Customers</h3></div></div>
                           {orders.length ? <div className="admin-table-wrap"><table className="admin-table">
-                            <thead><tr><th>Customer</th><th>Phone</th><th>Delivery address</th><th>Orders</th><th>Total spent</th><th>Last order</th></tr></thead>
+                            <thead><tr><th>Customer</th><th>Phone</th><th>Address</th><th>Orders</th><th>Total spent</th><th>Last order</th></tr></thead>
                             <tbody>{[...orders.reduce((customers, order) => {
                               const key = order.phone;
                               const customer = customers.get(key) || { ...order, orderCount: 0, spent: 0 };
@@ -1184,7 +1184,7 @@ const availableFoods = foods.filter(food => food.available);
                               customers.set(key, customer);
                               return customers;
                             }, new Map()).values()].map(customer => <tr key={customer.phone}>
-                              <td><b>{customer.customerName}</b></td><td>{customer.phone}</td><td className="admin-order-address">{customer.address || 'Pickup / no delivery address'}</td><td>{customer.orderCount}</td><td><b>{peso(customer.spent)}</b></td><td>{new Date(customer.createdAt).toLocaleDateString()}</td>
+                              <td><b>{customer.customerName}</b></td><td>{customer.phone}</td><td className="admin-order-address">{customer.address || 'Not provided on older order'}</td><td>{customer.orderCount}</td><td><b>{peso(customer.spent)}</b></td><td>{new Date(customer.createdAt).toLocaleDateString()}</td>
                             </tr>)}</tbody>
                           </table></div> : <p className="admin-empty-state">Customer details will appear after the first order.</p>}
                         </section>

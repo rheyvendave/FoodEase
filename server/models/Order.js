@@ -18,7 +18,7 @@ const schema = new mongoose.Schema(
     customerName: { type: String, required: true, trim: true },
     phone: { type: String, required: true, trim: true },
     fulfillment: { type: String, enum: ["pickup", "delivery"], required: true },
-    address: { type: String, default: "" },
+    address: { type: String, required: true, trim: true },
     paymentMethod: { type: String, default: "cash", enum: ["cash"] },
     items: { type: [item], validate: (v) => v.length > 0 },
     total: { type: Number, required: true, min: 0 },

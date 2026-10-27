@@ -7,15 +7,15 @@ export async function createOrder(req, res, next) {
       customerName,
       phone,
       fulfillment,
-      address = "",
+      address,
       items,
     } = req.body || {};
     if (!customerName?.trim() || !phone?.trim())
       return res.status(400).json({ message: "Name and phone are required." });
     if (!["pickup", "delivery"].includes(fulfillment))
       return res.status(400).json({ message: "Choose pickup or delivery." });
-    if (fulfillment === "delivery" && !address.trim())
-      return res.status(400).json({ message: "Delivery address is required." });
+    if (typeof address !== "string" || !address.trim())
+      return res.status(400).json({ message: "Address is required for every order." });
     if (!Array.isArray(items) || !items.length)
       return res.status(400).json({ message: "Cart is empty." });
     if (items.some((i) => !mongoose.isValidObjectId(i.foodId)))
@@ -49,7 +49,7 @@ export async function createOrder(req, res, next) {
       customerName,
       phone,
       fulfillment,
-      address: fulfillment === "delivery" ? address : "",
+      address: address.trim(),
       paymentMethod: "cash",
       items: clean,
       total,
