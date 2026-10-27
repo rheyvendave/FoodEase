@@ -1029,6 +1029,55 @@ const availableFoods = foods.filter(food => food.available);
         </div>
       )}
 
+      {receipt && (
+        <div className="overlay receipt-overlay" onClick={() => setReceipt(null)}>
+          <section className="modal receipt-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-title" onClick={event => event.stopPropagation()}>
+            <button className="close" aria-label="Close receipt" onClick={() => setReceipt(null)}>×</button>
+            <div className="receipt-heading">
+              <small className="eyebrow">FOODEASE ORDER RECEIPT</small>
+              <h2 id="receipt-title">Your order is <em>placed</em></h2>
+              <p>Your receipt is ready. Download or print a copy for your records.</p>
+            </div>
+            <div className="receipt-reference">
+              <span>Order reference</span>
+              <b>{String(receipt._id).slice(-6).toUpperCase()}</b>
+            </div>
+            <div className="receipt-details">
+              <p><span>Customer</span><b>{receipt.customerName}</b></p>
+              <p><span>Phone</span><b>{receipt.phone}</b></p>
+              <p><span>Fulfilment</span><b>{receipt.fulfillment === 'delivery' ? 'Delivery' : 'Pickup'}</b></p>
+              {receipt.fulfillment === 'delivery' && <p><span>Delivery address</span><b>{receipt.address}</b></p>}
+              <p><span>Payment</span><b>Cash on {receipt.fulfillment}</b></p>
+              <p><span>Order date</span><b>{new Date(receipt.createdAt || Date.now()).toLocaleString()}</b></p>
+            </div>
+            <div className="receipt-items">
+              {receipt.items.map((item, index) => (
+                <p key={`${item.foodId || item.name}-${index}`}>
+                  <span>{item.name} × {item.quantity}</span>
+                  <b>{peso(Number(item.price) * Number(item.quantity))}</b>
+                </p>
+              ))}
+            </div>
+            <div className="receipt-total"><span>Total</span><b>{peso(receipt.total)}</b></div>
+            <div className="receipt-actions">
+              <button className="cta" disabled={receiptDownloading} onClick={async () => {
+                setReceiptDownloading(true);
+                try {
+                  await downloadOrderReceipt(receipt);
+                } catch (error) {
+                  console.error('Unable to download the order receipt PDF.', error);
+                  setMsg('Could not download the receipt. Please use Print instead.');
+                } finally {
+                  setReceiptDownloading(false);
+                }
+              }}>{receiptDownloading ? 'Preparing PDF...' : 'Download receipt (PDF)'}</button>
+              <button className="receipt-done" onClick={() => window.print()}>Print</button>
+              <button className="receipt-done" onClick={() => setReceipt(null)}>Done</button>
+            </div>
+          </section>
+        </div>
+      )}
+
       {admin && !receipt && (
         <div className={`overlay${!token ? ' admin-login-overlay' : ' admin-workspace-overlay'}`} onClick={() => setAdmin(false)}>
           <section className={`modal admin${!token ? ' admin-login-modal' : ' admin-workspace'}`} role="dialog" aria-modal="true" aria-labelledby="admin-title" onClick={event => event.stopPropagation()}>
@@ -1103,55 +1152,6 @@ const availableFoods = foods.filter(food => food.available);
                     </div>
                     {adminLoginNotice && <p className="admin-login-notice" role="alert">{adminLoginNotice}</p>}
                     <button className="cta full"><span aria-hidden="true">→</span> Sign in</button>
-      {receipt && (
-        <div className="overlay receipt-overlay" onClick={() => setReceipt(null)}>
-          <section className="modal receipt-modal" role="dialog" aria-modal="true" aria-labelledby="receipt-title" onClick={event => event.stopPropagation()}>
-            <button className="close" aria-label="Close receipt" onClick={() => setReceipt(null)}>×</button>
-            <div className="receipt-heading">
-              <small className="eyebrow">FOODEASE ORDER RECEIPT</small>
-              <h2 id="receipt-title">Your order is <em>placed</em></h2>
-              <p>Your receipt is ready. Download or print a copy for your records.</p>
-            </div>
-            <div className="receipt-reference">
-              <span>Order reference</span>
-              <b>{String(receipt._id).slice(-6).toUpperCase()}</b>
-            </div>
-            <div className="receipt-details">
-              <p><span>Customer</span><b>{receipt.customerName}</b></p>
-              <p><span>Phone</span><b>{receipt.phone}</b></p>
-              <p><span>Fulfilment</span><b>{receipt.fulfillment === 'delivery' ? 'Delivery' : 'Pickup'}</b></p>
-              {receipt.fulfillment === 'delivery' && <p><span>Delivery address</span><b>{receipt.address}</b></p>}
-              <p><span>Payment</span><b>Cash on {receipt.fulfillment}</b></p>
-              <p><span>Order date</span><b>{new Date(receipt.createdAt || Date.now()).toLocaleString()}</b></p>
-            </div>
-            <div className="receipt-items">
-              {receipt.items.map((item, index) => (
-                <p key={`${item.foodId || item.name}-${index}`}>
-                  <span>{item.name} × {item.quantity}</span>
-                  <b>{peso(Number(item.price) * Number(item.quantity))}</b>
-                </p>
-              ))}
-            </div>
-            <div className="receipt-total"><span>Total</span><b>{peso(receipt.total)}</b></div>
-            <div className="receipt-actions">
-              <button className="cta" disabled={receiptDownloading} onClick={async () => {
-                setReceiptDownloading(true);
-                try {
-                  await downloadOrderReceipt(receipt);
-                } catch (error) {
-                  console.error('Unable to download the order receipt PDF.', error);
-                  setMsg('Could not download the receipt. Please use Print instead.');
-                } finally {
-                  setReceiptDownloading(false);
-                }
-              }}>{receiptDownloading ? 'Preparing PDF...' : 'Download receipt (PDF)'}</button>
-              <button className="receipt-done" onClick={() => window.print()}>Print</button>
-              <button className="receipt-done" onClick={() => setReceipt(null)}>Done</button>
-            </div>
-          </section>
-        </div>
-      )}
-
                   </form>
                   <span className="admin-login-secure">Secure access for FoodEase owners</span>
                 </div>
