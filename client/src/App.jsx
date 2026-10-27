@@ -1424,7 +1424,7 @@ const availableFoods = foods.filter(food => food.available);
                         <div className="admin-orders-heading">
                           <div className="admin-page-heading">
                             <div><span className="admin-section-kicker">ORDER MANAGEMENT</span><h2 id="admin-title">Orders</h2><p>View and manage customer orders.</p></div>
-                            <button className="admin-secondary-button" onClick={loadOrders}>↻&nbsp; Refresh</button>
+                            <button className="admin-secondary-button" onClick={() => loadOrders()}>↻&nbsp; Refresh</button>
                           </div>
                           <div className="admin-stat-grid admin-order-stats">
                           {[
