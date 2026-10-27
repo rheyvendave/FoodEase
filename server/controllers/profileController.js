@@ -21,6 +21,7 @@ function profileResponse(profile) {
 
 export async function getProfile(_req, res, next) {
   try {
+    res.set("Cache-Control", "no-store");
     const profile = await StoreProfile.findOneAndUpdate(
       { key: "main" },
       { $setOnInsert: { key: "main", ...defaultProfile } },

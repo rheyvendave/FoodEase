@@ -208,6 +208,7 @@ export default function App() {
 
   useEffect(() => {
     load();
+    loadStoreProfile();
   }, []);
 
   useEffect(() => {
@@ -764,8 +765,8 @@ const availableFoods = foods.filter(food => food.available);
           <img className="brand-logo" src="/foodease-logo.png" alt="FoodEase" />
           <span><small>Filipino comfort food, made with love.</small></span>
         </div>
-        <div className="footer-column"><b>Visit us</b><span>Mambajao, Maasin City, Southern Leyte</span><span>Monday–Saturday · 8:30 AM–10:00 PM</span><span>Local pickup · Delivery available</span></div>
-        <div className="footer-column"><b>Get in touch</b><a href="tel:+639099892812">0909 989 2812</a></div>
+        <div className="footer-column"><b>Visit us</b><span>{storeProfile.address}</span><span>{storeProfile.businessHours}</span><span>Local pickup · Delivery available</span></div>
+        <div className="footer-column"><b>Get in touch</b><a href={`tel:${storeProfile.phone.replace(/[^\d+]/g, '')}`}>{storeProfile.phone}</a></div>
         <div className="footer-column"><b>Follow on</b><a href="https://www.facebook.com/" target="_blank" rel="noreferrer">Facebook</a><a href="https://www.instagram.com/" target="_blank" rel="noreferrer">Instagram</a></div>
         <div className="footer-note">
           <span>© {new Date().getFullYear()} FoodEase</span><a href="#top">Back to top ↑</a>
