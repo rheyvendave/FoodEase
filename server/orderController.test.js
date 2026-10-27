@@ -43,6 +43,64 @@ test('accepts pickup orders without an address', async t => {
   assert.equal(createOrderMock.mock.calls[0].arguments[0].address, '');
 });
 
+test('accepts full names with accents and common name punctuation', async t => {
+  t.mock.method(Food, 'find', async () => [{
+    _id: foodId,
+    name: 'Test Meal',
+    price: 100,
+    imageUrl: ''
+  }]);
+  const createOrderMock = t.mock.method(Order, 'create', async order => order);
+  const url = await startOrderServer(t);
+
+  for (const customerName of ['José Dela Cruz', "Mary-Jane O'Neil"]) {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerName,
+        phone: '09123456789',
+        fulfillment: 'pickup',
+        items: [{ foodId, quantity: 1 }]
+      })
+    });
+
+    assert.equal(response.status, 201);
+  }
+
+  assert.deepEqual(createOrderMock.mock.calls.map(call => call.arguments[0].customerName), [
+    'José Dela Cruz',
+    "Mary-Jane O'Neil"
+  ]);
+});
+
+test('rejects invalid full names before querying foods or saving an order', async t => {
+  const foodFind = t.mock.method(Food, 'find');
+  const createOrderMock = t.mock.method(Order, 'create');
+  const url = await startOrderServer(t);
+  const invalidNames = ['adawdwaad', 'John', '123456789', 'John Doe3', 'John @ Doe', '  '];
+
+  for (const customerName of invalidNames) {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customerName,
+        phone: '09123456789',
+        fulfillment: 'pickup',
+        items: [{ foodId, quantity: 1 }]
+      })
+    });
+    const result = await response.json();
+
+    assert.equal(response.status, 400);
+    assert.match(result.message, /first and last name/);
+  }
+
+  assert.equal(foodFind.mock.callCount(), 0);
+  assert.equal(createOrderMock.mock.callCount(), 0);
+});
+
 test('requires and saves an address for delivery orders only', async t => {
   t.mock.method(Food, 'find', async () => [{
     _id: foodId,
@@ -127,6 +185,18 @@ test('order schema requires address only for delivery', () => {
 
   assert.equal(pickup.validateSync(), undefined);
   assert.equal(delivery.validateSync().errors.address.kind, 'required');
+});
+
+test('order schema rejects an invalid customer name', () => {
+  const order = new Order({
+    customerName: 'John123',
+    phone: '09123456789',
+    fulfillment: 'pickup',
+    items: [{ foodId, quantity: 1 }],
+    total: 100
+  });
+
+  assert.equal(order.validateSync().errors.customerName.kind, 'regexp');
 });
 
 test('accepts all supported Philippine mobile number formats', async t => {

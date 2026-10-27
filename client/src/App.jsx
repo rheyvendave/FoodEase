@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './api.js';
 
 const menuItems = [
@@ -49,6 +49,7 @@ const empty = { name: '', description: '', category: '', price: '', imageUrl: ''
 const maxFoodImageBytes = 450 * 1024;
 const maxOrderItemQuantity = 50;
 const isValidPhilippineMobileNumber = value => /^(?:09\d{9}|\+639\d{9}|639\d{9})$/.test(value);
+const isValidFullName = value => /^(?:\p{L}[\p{L}\p{M}]*(?:['’-]\p{L}[\p{L}\p{M}]*)*)(?:\s+(?:\p{L}[\p{L}\p{M}]*(?:['’-]\p{L}[\p{L}\p{M}]*)*))+$/u.test(value);
 
 async function prepareFoodImage(file) {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
@@ -146,6 +147,7 @@ export default function App() {
   const [checkout, setCheckout] = useState(false);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [customer, setCustomer] = useState({ customerName: '', phone: '', fulfillment: 'pickup', address: '' });
+  const [nameTouched, setNameTouched] = useState(false);
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [admin, setAdmin] = useState(false);
   const [token, setToken] = useState(sessionStorage.getItem('food-token') || '');
@@ -170,6 +172,7 @@ export default function App() {
   const [profileDraft, setProfileDraft] = useState(defaultStoreProfile);
   const [profileEditing, setProfileEditing] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
+  const profileLoadSequence = useRef(0);
   const [form, setForm] = useState(empty);
   const [edit, setEdit] = useState('');
   const [imageProcessing, setImageProcessing] = useState(false);
@@ -481,6 +484,8 @@ const availableFoods = foods.filter(food => food.available);
   async function place(event) {
     event.preventDefault();
     if (orderSubmitting) return;
+    setNameTouched(true);
+    if (!isValidFullName(customer.customerName.trim().replace(/\s+/g, ' '))) return;
     setPhoneTouched(true);
     if (!isValidPhilippineMobileNumber(customer.phone.trim())) return;
     if (!['pickup', 'delivery'].includes(customer.fulfillment)) {
@@ -594,10 +599,12 @@ const availableFoods = foods.filter(food => food.available);
   }
 
   async function loadStoreProfile() {
+    const requestSequence = ++profileLoadSequence.current;
     try {
-      const profile = await api('/profile', {}, token);
+      const profile = await api('/profile', { cache: 'no-store' }, token);
+      if (requestSequence !== profileLoadSequence.current) return;
       setStoreProfile(profile);
-      setProfileDraft(profile);
+      if (!profileEditing) setProfileDraft(profile);
     } catch (error) {
       setMsg(error.message);
     }
@@ -605,12 +612,14 @@ const availableFoods = foods.filter(food => food.available);
 
   async function saveStoreProfile(event) {
     event.preventDefault();
+    profileLoadSequence.current += 1;
     setProfileSaving(true);
     try {
       const profile = await api('/profile', {
         method: 'PUT',
         body: JSON.stringify(profileDraft)
       }, token);
+      profileLoadSequence.current += 1;
       setStoreProfile(profile);
       setProfileDraft(profile);
       setProfileEditing(false);
@@ -792,7 +801,7 @@ const availableFoods = foods.filter(food => food.available);
           <img className="brand-logo" src="/foodease-logo.png" alt="FoodEase" />
           <span><small>Filipino comfort food, made with love.</small></span>
         </div>
-        <div className="footer-column"><b>Visit us</b><span>{storeProfile.address}</span><span>{storeProfile.businessHours}</span><span>Local pickup · Delivery available</span></div>
+        <div className="footer-column"><b>Visit us</b><span>{storeProfile.branchName}</span><span>{storeProfile.address}</span><span>{storeProfile.businessHours}</span><span>Local pickup · Delivery available</span></div>
         <div className="footer-column"><b>Get in touch</b><a href={`tel:${storeProfile.phone.replace(/[^\d+]/g, '')}`}>{storeProfile.phone}</a></div>
         <div className="footer-column"><b>Follow on</b><a href="https://www.facebook.com/" target="_blank" rel="noreferrer">Facebook</a><a href="https://www.instagram.com/" target="_blank" rel="noreferrer">Instagram</a></div>
         <div className="footer-note">
@@ -874,7 +883,8 @@ const availableFoods = foods.filter(food => food.available);
                 </div>
                 <h3 className="total">Total <em>{peso(total)}</em></h3>
                 <form onSubmit={place} className="form">
-                  <label>Full name<input required value={customer.customerName} onChange={event => setCustomer({ ...customer, customerName: event.target.value })} /></label>
+                  <label>Full name<input required maxLength={100} autoComplete="name" aria-invalid={nameTouched && !isValidFullName(customer.customerName.trim().replace(/\s+/g, ' '))} aria-describedby={nameTouched && !isValidFullName(customer.customerName.trim().replace(/\s+/g, ' ')) ? 'order-name-help' : undefined} value={customer.customerName} onBlur={() => setNameTouched(true)} onChange={event => setCustomer({ ...customer, customerName: event.target.value })} placeholder="First and last name" /></label>
+                  {nameTouched && !isValidFullName(customer.customerName.trim().replace(/\s+/g, ' ')) && <small id="order-name-help" role="alert">Enter your first and last name using letters. Spaces, hyphens, and apostrophes are allowed.</small>}
                   <label>Phone number<input required type="tel" inputMode="tel" autoComplete="tel" aria-invalid={phoneTouched && !isValidPhilippineMobileNumber(customer.phone.trim())} aria-describedby={phoneTouched && !isValidPhilippineMobileNumber(customer.phone.trim()) ? 'order-phone-help' : undefined} value={customer.phone} onBlur={() => setPhoneTouched(true)} onChange={event => setCustomer({ ...customer, phone: event.target.value })} /></label>
                   {phoneTouched && !isValidPhilippineMobileNumber(customer.phone.trim()) && <small id="order-phone-help" role="alert">Enter a valid Philippine mobile number, e.g. 09171234567, +639171234567, or 639171234567.</small>}
                   <label>Fulfillment<select required value={customer.fulfillment} onChange={event => setCustomer({ ...customer, fulfillment: event.target.value, address: event.target.value === 'delivery' ? customer.address : '' })}><option value="pickup">Pickup</option><option value="delivery">Delivery</option></select></label>

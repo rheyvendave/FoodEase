@@ -15,7 +15,16 @@ const item = new mongoose.Schema(
 );
 const schema = new mongoose.Schema(
   {
-    customerName: { type: String, required: true, trim: true },
+    customerName: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 100,
+      match: [
+        /^(?:\p{L}[\p{L}\p{M}]*(?:['’-]\p{L}[\p{L}\p{M}]*)*)(?:\s+(?:\p{L}[\p{L}\p{M}]*(?:['’-]\p{L}[\p{L}\p{M}]*)*))+$/u,
+        "Enter a valid first and last name.",
+      ],
+    },
     phone: {
       type: String,
       required: true,

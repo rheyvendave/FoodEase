@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import Food from "../models/Food.js";
 import Order from "../models/Order.js";
 const PHILIPPINE_MOBILE_NUMBER = /^(?:09\d{9}|\+639\d{9}|639\d{9})$/;
+const FULL_NAME = /^(?:\p{L}[\p{L}\p{M}]*(?:['’-]\p{L}[\p{L}\p{M}]*)*)(?:\s+(?:\p{L}[\p{L}\p{M}]*(?:['’-]\p{L}[\p{L}\p{M}]*)*))+$/u;
 
 export async function createOrder(req, res, next) {
   try {
@@ -14,9 +15,13 @@ export async function createOrder(req, res, next) {
       address,
       items,
     } = req.body;
-    if (typeof customerName !== "string" || !customerName.trim()
-      || customerName.trim().length > 100)
-      return res.status(400).json({ message: "Enter a valid name." });
+    const normalizedName = typeof customerName === "string"
+      ? customerName.trim().replace(/\s+/g, " ")
+      : "";
+    if (!FULL_NAME.test(normalizedName) || normalizedName.length > 100)
+      return res.status(400).json({
+        message: "Enter your first and last name using letters. Spaces, hyphens, and apostrophes are allowed.",
+      });
     if (typeof phone !== "string" || !PHILIPPINE_MOBILE_NUMBER.test(phone.trim()))
       return res.status(400).json({
         message: "Enter a valid Philippine mobile number (09171234567, +639171234567, or 639171234567).",
@@ -70,7 +75,7 @@ export async function createOrder(req, res, next) {
     }
     const total = clean.reduce((s, i) => s + i.price * i.quantity, 0);
     const order = await Order.create({
-      customerName: customerName.trim(),
+      customerName: normalizedName,
       phone: phone.trim(),
       fulfillment,
       address: orderAddress,
