@@ -623,6 +623,7 @@ const availableFoods = foods.filter(food => food.available);
       });
       setCart([]);
       setCheckout(false);
+      setAdmin(false);
       setReceipt(result.order);
     } catch (error) {
       setMsg(error.message);
@@ -1028,7 +1029,7 @@ const availableFoods = foods.filter(food => food.available);
         </div>
       )}
 
-      {admin && (
+      {admin && !receipt && (
         <div className={`overlay${!token ? ' admin-login-overlay' : ' admin-workspace-overlay'}`} onClick={() => setAdmin(false)}>
           <section className={`modal admin${!token ? ' admin-login-modal' : ' admin-workspace'}`} role="dialog" aria-modal="true" aria-labelledby="admin-title" onClick={event => event.stopPropagation()}>
             <button className="close" aria-label="Close admin panel" onClick={() => setAdmin(false)}>×</button>
