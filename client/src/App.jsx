@@ -198,7 +198,7 @@ export default function App() {
   }));
   const [showPassword, setShowPassword] = useState(false);
   const [adminLoginNotice, setAdminLoginNotice] = useState('');
-  const [tab, setTab] = useState('foods');
+  const [tab, setTab] = useState('overview');
   const [orders, setOrders] = useState([]);
   const [editingOrder, setEditingOrder] = useState(null);
   const [orderEditDraft, setOrderEditDraft] = useState({ customerName: '', phone: '', address: '' });
