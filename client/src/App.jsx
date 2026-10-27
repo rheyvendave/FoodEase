@@ -222,6 +222,7 @@ const chatLabels = {
 
 export default function App() {
   const [foods, setFoods] = useState(sample);
+  const [foodsLoading, setFoodsLoading] = useState(true);
   const [demo, setDemo] = useState(false);
   const [category, setCategory] = useState('All');
   const [cart, setCart] = useState([]);
@@ -296,12 +297,15 @@ export default function App() {
     || foodPhotos[0];
 
   async function load(authToken = token) {
+    setFoodsLoading(true);
     try {
       setFoods(await api('/foods?includeUnavailable=' + Boolean(authToken), {}, authToken));
       setDemo(false);
     } catch {
       setFoods(sample);
       setDemo(true);
+    } finally {
+      setFoodsLoading(false);
     }
   }
 
@@ -571,6 +575,10 @@ const availableFoods = foods.filter(food => food.available);
   }
 
   function add(food, quantity = 1) {
+    if (foodsLoading) {
+      setMsg('The menu is still loading. Please wait before adding items.');
+      return;
+    }
     const currentQuantity = cart.find(item => item._id === food._id)?.quantity || 0;
     if (currentQuantity + quantity > maxOrderItemQuantity) {
       setMsg(`Maximum ${maxOrderItemQuantity} per menu item.`);
@@ -601,6 +609,10 @@ const availableFoods = foods.filter(food => food.available);
   async function place(event) {
     event.preventDefault();
     if (orderSubmitting) return;
+    if (foodsLoading) {
+      setMsg('The menu is still loading. Please wait before placing your order.');
+      return;
+    }
     setNameTouched(true);
     if (!isValidFullName(customer.customerName.trim().replace(/\s+/g, ' '))) return;
     setPhoneTouched(true);
@@ -860,7 +872,7 @@ const availableFoods = foods.filter(food => food.available);
                         <span aria-live="polite">{menuQuantities[food._id] || 1}</span>
                         <button type="button" aria-label={`Increase ${food.name} quantity`} disabled={!food.available || (menuQuantities[food._id] || 1) >= maxOrderItemQuantity} onClick={() => changeMenuQuantity(food._id, 1)}>+</button>
                       </div>
-                      <button className="feature-add" disabled={!food.available} onClick={() => add(food, menuQuantities[food._id] || 1)} aria-label={`Add ${menuQuantities[food._id] || 1} ${food.name} to order`}><span aria-hidden="true">🛒</span> Add</button>
+                      <button className="feature-add" disabled={!food.available || foodsLoading} onClick={() => add(food, menuQuantities[food._id] || 1)} aria-label={foodsLoading ? 'Loading menu' : `Add ${menuQuantities[food._id] || 1} ${food.name} to order`}><span aria-hidden="true">🛒</span> {foodsLoading ? 'Loading...' : 'Add'}</button>
                     </div>
                   </div>
                 </div>
@@ -901,7 +913,7 @@ const availableFoods = foods.filter(food => food.available);
                         <span aria-live="polite">{menuQuantities[food._id] || 1}</span>
                         <button type="button" aria-label={`Increase ${food.name} quantity`} disabled={!food.available || (menuQuantities[food._id] || 1) >= maxOrderItemQuantity} onClick={() => changeMenuQuantity(food._id, 1)}>+</button>
                       </div>
-                      <button className="feature-add" disabled={!food.available} onClick={() => add(food, menuQuantities[food._id] || 1)} aria-label={`Add ${menuQuantities[food._id] || 1} ${food.name} to order`}><span aria-hidden="true">🛒</span> Add</button>
+                      <button className="feature-add" disabled={!food.available || foodsLoading} onClick={() => add(food, menuQuantities[food._id] || 1)} aria-label={foodsLoading ? 'Loading menu' : `Add ${menuQuantities[food._id] || 1} ${food.name} to order`}><span aria-hidden="true">🛒</span> {foodsLoading ? 'Loading...' : 'Add'}</button>
                     </div>
                   </div>
                 </div>
@@ -1021,7 +1033,7 @@ const availableFoods = foods.filter(food => food.available);
                   <label>Fulfillment<select required value={customer.fulfillment} onChange={event => setCustomer({ ...customer, fulfillment: event.target.value, address: event.target.value === 'delivery' ? customer.address : '' })}><option value="pickup">Pickup</option><option value="delivery">Delivery</option></select></label>
                   {customer.fulfillment === 'delivery' && <label>Address<input required maxLength={250} autoComplete="street-address" value={customer.address} onChange={event => setCustomer({ ...customer, address: event.target.value })} placeholder="House number, street, barangay, city" /></label>}
                   <p className="cash">💵 Cash on {customer.fulfillment}</p>
-                  <button className="cta full" disabled={orderSubmitting}>{orderSubmitting ? 'Placing order...' : `Place order · ${peso(total)}`}</button>
+                  <button className="cta full" disabled={orderSubmitting || foodsLoading}>{orderSubmitting ? 'Placing order...' : foodsLoading ? 'Loading menu...' : `Place order · ${peso(total)}`}</button>
                 </form>
               </>
             )}
