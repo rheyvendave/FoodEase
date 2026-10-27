@@ -3,6 +3,7 @@ import Food from "../models/Food.js";
 
 const MAX_IMAGE_DATA_URL_LENGTH = 615_000;
 const MAX_IMAGE_BYTES = 450 * 1024;
+const FOOD_CATEGORIES = ["Dessert", "Drinks", "Merienda", "Sulit Meals", "Ulam"];
 const imageDataUrlPattern = /^data:image\/webp;base64,([A-Za-z0-9+/]+={0,2})$/;
 
 function isValidImageUrl(imageUrl) {
@@ -53,13 +54,13 @@ export async function createFood(req, res, next) {
     } = req.body || {};
     if (
       !name?.trim() ||
-      !category?.trim() ||
+      !FOOD_CATEGORIES.includes(category) ||
       !Number.isFinite(Number(price)) ||
       Number(price) < 0
     )
       return res
         .status(400)
-        .json({ message: "Name, category, and valid price are required." });
+        .json({ message: "Name, a supported category, and valid price are required." });
     if (!isValidImageUrl(imageUrl))
       return res.status(400).json({ message: "Choose a valid image no larger than 450 KB." });
     res
@@ -92,6 +93,8 @@ export async function updateFood(req, res, next) {
       "available",
     ])
       if (req.body?.[k] !== undefined) updates[k] = req.body[k];
+    if (updates.category !== undefined && !FOOD_CATEGORIES.includes(updates.category))
+      return res.status(400).json({ message: "Choose a supported food category." });
     if (updates.imageUrl !== undefined && !isValidImageUrl(updates.imageUrl))
       return res.status(400).json({ message: "Choose a valid image no larger than 450 KB." });
     if (updates.price !== undefined) {

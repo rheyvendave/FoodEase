@@ -44,7 +44,8 @@ const defaultStoreProfile = {
 };
 
 const peso = value => '₱' + Number(value || 0).toFixed(2);
-const empty = { name: '', description: '', category: 'Main Course', price: '', imageUrl: '', available: true };
+const foodCategories = ['Dessert', 'Drinks', 'Merienda', 'Sulit Meals', 'Ulam'];
+const empty = { name: '', description: '', category: '', price: '', imageUrl: '', available: true };
 const maxFoodImageBytes = 450 * 1024;
 
 async function prepareFoodImage(file) {
@@ -1072,7 +1073,7 @@ const availableFoods = foods.filter(food => food.available);
                           <label className="admin-food-name-field">Food name<input id="admin-food-name" required placeholder="e.g. Chicken Adobo" value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></label>
                           <label className="admin-food-description-field">Description<textarea placeholder="Describe the food, ingredients, and special notes..." value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} /></label>
                           <div className="admin-food-form-row">
-                            <label>Category<input required placeholder="e.g. Ulam" value={form.category} onChange={event => setForm({ ...form, category: event.target.value })} /></label>
+                            <label>Category<select required value={form.category} onChange={event => setForm({ ...form, category: event.target.value })}><option value="" disabled>Choose a category</option>{foodCategories.map(category => <option key={category} value={category}>{category}</option>)}</select></label>
                             <label>Price (₱)<input type="number" min="0" step="0.01" required placeholder="0.00" value={form.price} onChange={event => setForm({ ...form, price: event.target.value })} /></label>
                           </div>
                           <label className="admin-food-image-field">Food image<input key={edit || 'new-food'} id="admin-food-image-upload" type="file" accept="image/jpeg,image/png,image/webp" onChange={selectFoodImage} /><small>Choose a JPG, PNG, or WebP image. It will be optimized before saving.</small></label>
