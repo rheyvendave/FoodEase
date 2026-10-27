@@ -252,14 +252,6 @@ footer {
 }
 .receipt-done { border: 1px solid #dbe4d6; border-radius: 8px; padding: 12px 18px; color: #315737; background: #fff; font-size: 12px; font-weight: 700; }
 
-@media print {
-  body * { visibility: hidden !important; }
-  .receipt-overlay, .receipt-overlay * { visibility: visible !important; }
-  .receipt-overlay { position: absolute; inset: 0; display: block; padding: 0; background: #fff; }
-  .receipt-modal { position: absolute; inset: 0 auto auto 0; width: 100%; max-height: none; overflow: visible; padding: 20px; box-shadow: none; }
-  .receipt-modal .close, .receipt-actions { display: none; }
-}
-
 @media (max-width: 1100px) {
   .site-header { padding-inline: clamp(18px, 4vw, 42px); gap: 18px; }
   .main-nav { gap: clamp(10px, 1.8vw, 20px); }
