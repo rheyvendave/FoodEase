@@ -1108,8 +1108,8 @@ const availableFoods = foods.filter(food => food.available);
             <button className="close" aria-label="Close receipt" onClick={() => setReceipt(null)}>×</button>
             <div className="receipt-heading">
               <small className="eyebrow">FOODEASE ORDER RECEIPT</small>
-              <h2 id="receipt-title">Thanks for your <em>order</em></h2>
-              <p>Keep this receipt as your copy.</p>
+              <h2 id="receipt-title">Your order is <em>placed</em></h2>
+              <p>Your receipt is ready. Download or print a copy for your records.</p>
             </div>
             <div className="receipt-reference">
               <span>Order reference</span>
@@ -1143,7 +1143,7 @@ const availableFoods = foods.filter(food => food.available);
                 } finally {
                   setReceiptDownloading(false);
                 }
-              }}>{receiptDownloading ? 'Preparing PDF...' : 'Download PDF'}</button>
+              }}>{receiptDownloading ? 'Preparing PDF...' : 'Download receipt (PDF)'}</button>
               <button className="receipt-done" onClick={() => window.print()}>Print</button>
               <button className="receipt-done" onClick={() => setReceipt(null)}>Done</button>
             </div>
