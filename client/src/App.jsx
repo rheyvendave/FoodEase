@@ -144,6 +144,8 @@ export default function App() {
   const [cart, setCart] = useState([]);
   const [menuQuantities, setMenuQuantities] = useState({});
   const [msg, setMsg] = useState('');
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastRevision, setToastRevision] = useState(0);
   const [checkout, setCheckout] = useState(false);
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [customer, setCustomer] = useState({ customerName: '', phone: '', fulfillment: 'pickup', address: '' });
@@ -218,6 +220,20 @@ export default function App() {
     load();
     loadStoreProfile();
   }, []);
+  useEffect(() => {
+    if (!msg) return undefined;
+
+    setToastVisible(true);
+    const hideTimer = window.setTimeout(() => setToastVisible(false), 2000);
+    const clearTimer = window.setTimeout(() => {
+      setMsg(currentMessage => currentMessage === msg ? '' : currentMessage);
+    }, 2300);
+
+    return () => {
+      window.clearTimeout(hideTimer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [msg, toastRevision]);
 
   useEffect(() => {
     if (!admin && !checkout && !mobileMenuOpen && !chatOpen) return undefined;
@@ -466,6 +482,7 @@ const availableFoods = foods.filter(food => food.available);
       ? items.map(item => item._id === food._id ? { ...item, quantity: item.quantity + quantity } : item)
       : [...items, { ...food, quantity }]);
     setMsg(`${quantity > 1 ? `${quantity} × ` : ''}${food.name} added to cart`);
+    setToastRevision(revision => revision + 1);
   }
 
   function changeMenuQuantity(id, delta) {
@@ -860,7 +877,7 @@ const availableFoods = foods.filter(food => food.available);
         </button>
       </aside>
 
-      {msg && <div className="toast" role="status">{msg}<button onClick={() => setMsg('')}>×</button></div>}
+      {msg && <div className={`toast${toastVisible ? '' : ' toast-hidden'}`} role="status">{msg}<button onClick={() => setToastVisible(false)}>×</button></div>}
 
       {checkout && (
         <div className="overlay" onClick={() => setCheckout(false)}>

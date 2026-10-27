@@ -189,8 +189,10 @@ footer {
 .footer-note { display: grid; align-content: start; gap: 10px; }
 
 .cta { display: inline-block; border: 0; background: var(--orange); color: white; padding: 13px 18px; font-size: 12px; font-weight: 700; }
-.toast { position: fixed; z-index: 20; bottom: 20px; left: 50%; transform: translateX(-50%); background: #303030; color: white; padding: 14px 18px; font: 12px 'DM Sans', sans-serif; max-width: 90vw; }
+.toast { position: fixed; z-index: 20; bottom: 20px; left: 50%; transform: translate(-50%, 0); background: #303030; color: white; padding: 14px 18px; font: 12px 'DM Sans', sans-serif; max-width: 90vw; opacity: 1; transition: opacity 300ms ease, transform 300ms ease; }
+.toast.toast-hidden { opacity: 0; transform: translate(-50%, 8px); pointer-events: none; }
 .toast button { background: none; border: 0; color: white; margin-left: 12px; font-size: 18px; }
+@media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
 .overlay { position: fixed; z-index: 10; inset: 0; background: rgb(23 23 23 / 68%); display: flex; align-items: center; justify-content: center; padding: 18px; }
 .modal { position: relative; background: #fff; width: min(530px, 100%); max-height: 92vh; overflow: auto; padding: 30px; }
 .modal h2 { font-size: 30px; margin: 10px 0 18px; }
