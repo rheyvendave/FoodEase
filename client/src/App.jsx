@@ -1226,12 +1226,12 @@ const availableFoods = foods.filter(food => food.available);
                           </div>
                           <div className="admin-sales-metrics" aria-live="polite">
                             <article>
-                              <span>Total sales</span>
-                              <b>{salesSummaryLoading ? 'Loading...' : peso(salesSummary.totalSales)}</b>
-                            </article>
-                            <article>
                               <span>Completed orders</span>
                               <b>{salesSummaryLoading ? '...' : salesSummary.completedOrders}</b>
+                            </article>
+                            <article>
+                              <span>Total sales</span>
+                              <b>{salesSummaryLoading ? 'Loading...' : peso(salesSummary.totalSales)}</b>
                             </article>
                           </div>
                         </section>
@@ -1365,12 +1365,12 @@ const availableFoods = foods.filter(food => food.available);
                           </div>
                           <div className="admin-sales-metrics" aria-live="polite">
                             <article>
-                              <span>Total sales</span>
-                              <b>{salesSummaryLoading ? 'Loading...' : peso(salesSummary.totalSales)}</b>
-                            </article>
-                            <article>
                               <span>Completed orders</span>
                               <b>{salesSummaryLoading ? '...' : salesSummary.completedOrders}</b>
+                            </article>
+                            <article>
+                              <span>Total sales</span>
+                              <b>{salesSummaryLoading ? 'Loading...' : peso(salesSummary.totalSales)}</b>
                             </article>
                           </div>
                         </section>
