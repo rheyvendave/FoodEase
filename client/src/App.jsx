@@ -895,6 +895,7 @@ const availableFoods = foods.filter(food => food.available);
           </button>
         </div>
         <nav id="main-navigation" className={`main-nav${mobileMenuOpen ? ' is-open' : ''}`} aria-label="Main navigation">
+          <a href="#top" onClick={() => setMobileMenuOpen(false)}>Home</a>
           <a className="active" href="#menu" onClick={() => setMobileMenuOpen(false)}>Menu</a>
           <a href="#sulit-meals" onClick={() => setMobileMenuOpen(false)}>Sulit-Meals</a>
           <a href="#contact" onClick={() => setMobileMenuOpen(false)}>Contact</a>
