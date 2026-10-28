@@ -43,7 +43,7 @@ const defaultStoreProfile = {
   phone: '0909 989 2812'
 };
 
-const peso = value => '₱' + Number(value || 0).toFixed(2);
+const peso = value => '₱' + Number(value || 0).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const foodCategories = ['Dessert', 'Drinks', 'Merienda', 'Sulit Meals', 'Ulam'];
 const empty = { name: '', description: '', category: '', price: '', imageUrl: '', available: true };
 const maxFoodImageBytes = 450 * 1024;
