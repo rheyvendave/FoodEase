@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import express from 'express';
 import Food from './models/Food.js';
 import Order from './models/Order.js';
+import { deliveryBarangays } from './deliveryBarangays.js';
+import { deliveryFeeByBarangay, getDeliveryFee } from './deliveryFees.js';
 import {
   createOrder,
   deleteOrder,
@@ -15,6 +17,14 @@ import {
 
 const foodId = '507f1f77bcf86cd799439011';
 const address = '12 Main Street, Mambajao, Maasin City';
+
+test('configures a delivery fee for each listed barangay', () => {
+  assert.deepEqual(Object.keys(deliveryFeeByBarangay).sort(), [...deliveryBarangays].sort());
+  assert.deepEqual([...new Set(Object.values(deliveryFeeByBarangay))].sort(), [20, 30, 40]);
+  assert.equal(getDeliveryFee('Mambajao'), 20);
+  assert.equal(getDeliveryFee('Bagtican'), 40);
+  assert.equal(getDeliveryFee('outside-maasin-city'), 0);
+});
 
 function responseStub() {
   return {
@@ -190,8 +200,12 @@ test('preserves the original completion date when status remains Completed', asy
   });
 });
 
-test('updates validated admin-corrected customer details without changing order totals', async t => {
-  const currentOrder = { fulfillment: 'delivery' };
+test('updates admin-corrected delivery details and recalculates the fee and total', async t => {
+  const currentOrder = {
+    fulfillment: 'delivery',
+    barangay: 'Mambajao',
+    items: [{ price: 100, quantity: 1 }]
+  };
   const updatedOrder = { _id: foodId, customerName: 'Jane Doe', phone: '09123456789', address };
   t.mock.method(Order, 'findById', async () => currentOrder);
   const updateOrder = t.mock.method(Order, 'findByIdAndUpdate', async () => updatedOrder);
@@ -199,13 +213,25 @@ test('updates validated admin-corrected customer details without changing order 
 
   await updateOrderCustomerDetails({
     params: { id: foodId },
-    body: { customerName: '  Jane   Doe ', phone: ' 09123456789 ', address: ` ${address} ` }
+    body: {
+      customerName: '  Jane   Doe ',
+      phone: ' 09123456789 ',
+      barangay: 'Mambajao',
+      address: ` ${address} `
+    }
   }, res, error => { throw error; });
 
   assert.equal(res.statusCode, 200);
   assert.equal(res.body, updatedOrder);
   assert.deepEqual(updateOrder.mock.calls[0].arguments[1], {
-    $set: { customerName: 'Jane Doe', phone: '09123456789', address }
+    $set: {
+      customerName: 'Jane Doe',
+      phone: '09123456789',
+      barangay: 'Mambajao',
+      address,
+      deliveryFee: 20,
+      total: 120
+    }
   });
   assert.deepEqual(updateOrder.mock.calls[0].arguments[2], { new: true, runValidators: true });
 });
@@ -326,6 +352,7 @@ test('requires and saves an address for delivery orders only', async t => {
       customerName: 'Test Customer',
       phone: '09123456789',
       fulfillment: 'delivery',
+      barangay: 'Mambajao',
       items: [{ foodId, quantity: 1 }]
     })
   });
@@ -338,6 +365,7 @@ test('requires and saves an address for delivery orders only', async t => {
       customerName: 'Test Customer',
       phone: '09123456789',
       fulfillment: 'delivery',
+      barangay: 'Mambajao',
       address: `  ${address}  `,
       items: [{ foodId, quantity: 1 }]
     })
@@ -345,18 +373,22 @@ test('requires and saves an address for delivery orders only', async t => {
 
   assert.equal(response.status, 201);
   assert.equal(createOrderMock.mock.calls[0].arguments[0].address, address);
+  assert.equal(createOrderMock.mock.calls[0].arguments[0].barangay, 'Mambajao');
+  assert.equal(createOrderMock.mock.calls[0].arguments[0].deliveryFee, 20);
+  assert.equal(createOrderMock.mock.calls[0].arguments[0].total, 120);
 });
 
 test('rejects unsupported fulfillment and invalid delivery addresses before saving', async t => {
   const createOrderMock = t.mock.method(Order, 'create');
   const url = await startOrderServer(t);
   const invalidOrders = [
-    { fulfillment: 'dine-in', address },
-    { fulfillment: 'delivery', address: '   ' },
-    { fulfillment: 'delivery', address: 'A'.repeat(251) }
+    { fulfillment: 'dine-in', barangay: 'Mambajao', address },
+    { fulfillment: 'delivery', barangay: 'Mambajao', address: '   ' },
+    { fulfillment: 'delivery', barangay: 'Mambajao', address: 'A'.repeat(251) },
+    { fulfillment: 'delivery', barangay: 'Outside Maasin City', address }
   ];
 
-  for (const { fulfillment, address: orderAddress } of invalidOrders) {
+  for (const { fulfillment, barangay, address: orderAddress } of invalidOrders) {
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -364,6 +396,7 @@ test('rejects unsupported fulfillment and invalid delivery addresses before savi
         customerName: 'Test Customer',
         phone: '09171234567',
         fulfillment,
+        barangay,
         address: orderAddress,
         items: [{ foodId, quantity: 1 }]
       })
@@ -387,12 +420,27 @@ test('order schema requires address only for delivery', () => {
     customerName: 'Test Customer',
     phone: '09123456789',
     fulfillment: 'delivery',
+    barangay: 'Mambajao',
     items: [{ foodId, quantity: 1 }],
-    total: 100
+    total: 120
   });
 
   assert.equal(pickup.validateSync(), undefined);
   assert.equal(delivery.validateSync().errors.address.kind, 'required');
+});
+
+test('order schema rejects a barangay outside the delivery area', () => {
+  const order = new Order({
+    customerName: 'Test Customer',
+    phone: '09123456789',
+    fulfillment: 'delivery',
+    barangay: 'Outside Maasin City',
+    address,
+    items: [{ foodId, quantity: 1 }],
+    total: 130
+  });
+
+  assert.equal(order.validateSync().errors.barangay.kind, 'enum');
 });
 
 test('order schema rejects an invalid customer name', () => {

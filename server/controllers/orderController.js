@@ -1,6 +1,8 @@
 import mongoose from "mongoose";
 import Food from "../models/Food.js";
 import Order from "../models/Order.js";
+import { deliveryBarangays } from "../deliveryBarangays.js";
+import { getDeliveryFee } from "../deliveryFees.js";
 const PHILIPPINE_MOBILE_NUMBER = /^(?:09\d{9}|\+639\d{9}|639\d{9})$/;
 const FULL_NAME = /^(?:\p{L}[\p{L}\p{M}]*(?:['’-]\p{L}[\p{L}\p{M}]*)*)(?:\s+(?:\p{L}[\p{L}\p{M}]*(?:['’-]\p{L}[\p{L}\p{M}]*)*))+$/u;
 
@@ -12,6 +14,7 @@ export async function createOrder(req, res, next) {
       customerName,
       phone,
       fulfillment,
+      barangay,
       address,
       items,
     } = req.body;
@@ -31,8 +34,14 @@ export async function createOrder(req, res, next) {
     const orderAddress = fulfillment === "delivery"
       ? typeof address === "string" ? address.trim() : ""
       : "";
+    const orderBarangay = fulfillment === "delivery"
+      ? typeof barangay === "string" ? barangay.trim() : ""
+      : "";
+    if (fulfillment === "delivery" && !deliveryBarangays.includes(orderBarangay))
+      return res.status(400).json({ message: "Maasin City Area, Available Only. Choose a barangay in Maasin City." });
     if (fulfillment === "delivery" && (!orderAddress || orderAddress.length > 250))
-      return res.status(400).json({ message: "A delivery address is required and must be 250 characters or fewer." });
+      return res.status(400).json({ message: "Enter your house, street, purok, or landmark (250 characters or fewer)." });
+    const deliveryFee = fulfillment === "delivery" ? getDeliveryFee(orderBarangay) : 0;
     if (!Array.isArray(items) || !items.length)
       return res.status(400).json({ message: "Cart is empty." });
     if (items.length > 50)
@@ -73,12 +82,15 @@ export async function createOrder(req, res, next) {
         quantity: q,
       });
     }
-    const total = clean.reduce((s, i) => s + i.price * i.quantity, 0);
+    const subtotal = clean.reduce((s, i) => s + i.price * i.quantity, 0);
+    const total = subtotal + deliveryFee;
     const order = await Order.create({
       customerName: normalizedName,
       phone: phone.trim(),
       fulfillment,
+      barangay: orderBarangay,
       address: orderAddress,
+      deliveryFee,
       paymentMethod: "cash",
       items: clean,
       total,
@@ -212,7 +224,7 @@ export async function updateOrderCustomerDetails(req, res, next) {
     if (!mongoose.isValidObjectId(req.params.id))
       return res.status(400).json({ message: "Invalid order ID." });
     if (!req.body || typeof req.body !== "object" || Array.isArray(req.body)
-      || Object.keys(req.body).some((field) => !["customerName", "phone", "address"].includes(field)))
+      || Object.keys(req.body).some((field) => !["customerName", "phone", "barangay", "address"].includes(field)))
       return res.status(400).json({ message: "Invalid customer details." });
     const customerName = typeof req.body.customerName === "string"
       ? req.body.customerName.trim().replace(/\s+/g, " ")
@@ -232,9 +244,25 @@ export async function updateOrderCustomerDetails(req, res, next) {
     const address = req.body.address.trim();
     if (currentOrder.fulfillment === "delivery" && !address)
       return res.status(400).json({ message: "A delivery address is required." });
+    const barangay = currentOrder.fulfillment === "delivery"
+      ? typeof req.body.barangay === "string" ? req.body.barangay.trim() : currentOrder.barangay || ""
+      : "";
+    if (currentOrder.fulfillment === "delivery" && !deliveryBarangays.includes(barangay))
+      return res.status(400).json({ message: "Maasin City Area, Available Only. Choose a barangay in Maasin City." });
+    const deliveryFee = currentOrder.fulfillment === "delivery" ? getDeliveryFee(barangay) : 0;
+    const subtotal = currentOrder.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const order = await Order.findByIdAndUpdate(
       req.params.id,
-      { $set: { customerName, phone: req.body.phone.trim(), address } },
+      {
+        $set: {
+          customerName,
+          phone: req.body.phone.trim(),
+          barangay,
+          address,
+          deliveryFee,
+          total: subtotal + deliveryFee,
+        },
+      },
       { new: true, runValidators: true },
     );
     if (!order) return res.status(404).json({ message: "Order not found." });

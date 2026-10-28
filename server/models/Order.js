@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { deliveryBarangays } from "../deliveryBarangays.js";
 const item = new mongoose.Schema(
   {
     foodId: {
@@ -32,6 +33,7 @@ const schema = new mongoose.Schema(
       match: [/^(?:09\d{9}|\+639\d{9}|639\d{9})$/, "Enter a valid Philippine mobile number."],
     },
     fulfillment: { type: String, enum: ["pickup", "delivery"], required: true },
+    barangay: { type: String, enum: ["", ...deliveryBarangays], default: "" },
     address: {
       type: String,
       trim: true,
@@ -40,6 +42,7 @@ const schema = new mongoose.Schema(
         return this.fulfillment === "delivery";
       },
     },
+    deliveryFee: { type: Number, min: 0, default: 0 },
     paymentMethod: { type: String, default: "cash", enum: ["cash"] },
     items: { type: [item], validate: (v) => v.length > 0 },
     total: { type: Number, required: true, min: 0 },

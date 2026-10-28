@@ -209,6 +209,10 @@ footer {
 .form input, .form select, .form textarea { width: 100%; min-width: 0; padding: 11px; border: 1px solid #ddd; background: white; font-size: 12px; }
 .form textarea { min-height: 65px; }
 .cash { font-size: 11px; padding: 10px; background: #fff3e7; color: #714a2d; }
+.order-price-breakdown { padding-top: 8px; border-top: 1px solid #e8dece; }
+.order-price-breakdown p { display: flex; justify-content: space-between; gap: 12px; margin: 5px 0; font: 11px 'DM Sans', sans-serif; }
+.order-price-breakdown .total { margin: 10px 0; }
+.delivery-warning { color: #a22d22; font: 700 12px 'DM Sans', sans-serif; }
 .full { width: 100%; text-align: center; }
 .admin { width: min(700px, 100%); }
 .tabs { display: flex; gap: 8px; margin: 15px 0; }

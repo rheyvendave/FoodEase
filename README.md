@@ -13,6 +13,8 @@ To enable Groq-powered Kain-Bot, set `GROQ_API_KEY` in the server environment. K
 
 The admin dashboard includes completed-order sales totals for today, the last 7 days, or the current month, using the FoodEase branch's Manila timezone.
 
+Delivery is limited to the Maasin City barangays listed in the checkout. The starting delivery fees are estimates: ₱20 for nearby barangays, ₱30 for the middle tier, and ₱40 for farther barangays. The API calculates the final fee; update the fee tiers in `server/deliveryFees.js` and the matching checkout display in `client/src/App.jsx` together after checking actual delivery routes.
+
 This is a learning starter. Configure secure secrets before use and do not expose `.env` files.
 
 ## Deploy to Vercel

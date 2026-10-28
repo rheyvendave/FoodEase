@@ -48,8 +48,29 @@ const foodCategories = ['Dessert', 'Drinks', 'Merienda', 'Sulit Meals', 'Ulam'];
 const empty = { name: '', description: '', category: '', price: '', imageUrl: '', available: true };
 const maxFoodImageBytes = 450 * 1024;
 const maxOrderItemQuantity = 50;
+const deliveryBarangays = [
+  'Abgao', 'Acasia', 'Asuncion', 'Bactul I', 'Bactul II', 'Badiang', 'Bagtican',
+  'Basak', 'Bato I', 'Bato II', 'Batuan', 'Baugo', 'Bilibol', 'Bogo',
+  'Cabadiangan', 'Cabulihan', 'Cagnituan', 'Cambooc', 'Cansirong', 'Canturing',
+  'Canyuom', 'Combado', 'Dongon', 'Gawisan', 'Guadalupe', 'Hanginan', 'Hantag',
+  'Hinapu Daku', 'Hinapu Gamay', 'Ibarra', 'Isagani', 'Laboon', 'Lanao',
+  'Libertad', 'Libhu', 'Lib-og', 'Lonoy', 'Lunas', 'Mahayahay', 'Malapoc Norte',
+  'Malapoc Sur', 'Mambajao', 'Manhilo', 'Mantahan', 'Maria Clara', 'Matin-ao',
+  'Nasaug', 'Nati', 'Nonok Norte', 'Nonok Sur', 'Panan-awan', 'Pansaan', 'Pasay',
+  'Pinascohan', 'Rizal', 'San Agustin', 'San Isidro', 'San Jose', 'San Rafael',
+  'Santa Cruz', 'Santa Rosa', 'Santo Niño', 'Santo Rosario', 'Soro-soro',
+  'Tagnipa', 'Tam-is', 'Tawid', 'Tigbawan', 'Tomoy-tomoy', 'Tunga-tunga'
+];
+const outsideDeliveryArea = 'outside-maasin-city';
+const nearbyDeliveryBarangays = ['Badiang', 'Canturing', 'Combado', 'Ibarra', 'Mambajao', 'Mantahan', 'Tunga-tunga'];
+const fartherDeliveryBarangays = ['Bagtican', 'Cambooc', 'Laboon', 'Nasaug', 'Nati', 'Pansaan', 'Pinascohan', 'San Isidro', 'San Rafael', 'Tigbawan', 'Tomoy-tomoy'];
 const isValidPhilippineMobileNumber = value => /^(?:09\d{9}|\+639\d{9}|639\d{9})$/.test(value);
 const isValidFullName = value => /^(?:\p{L}[\p{L}\p{M}]*(?:['’-]\p{L}[\p{L}\p{M}]*)*)(?:\s+(?:\p{L}[\p{L}\p{M}]*(?:['’-]\p{L}[\p{L}\p{M}]*)*))+$/u.test(value);
+const isCoveredDeliveryBarangay = barangay => deliveryBarangays.includes(barangay);
+const getDeliveryFee = barangay => !isCoveredDeliveryBarangay(barangay)
+  ? 0
+  : nearbyDeliveryBarangays.includes(barangay) ? 20 : fartherDeliveryBarangays.includes(barangay) ? 40 : 30;
+const formatDeliveryAddress = order => [order.barangay, order.address].filter(Boolean).join(', ');
 
 async function downloadOrderReceiptImage(receiptElement, order) {
   const { default: html2canvas } = await import('html2canvas');
@@ -186,7 +207,7 @@ export default function App() {
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [receiptDownloading, setReceiptDownloading] = useState(false);
   const receiptModalRef = useRef(null);
-  const [customer, setCustomer] = useState({ customerName: '', phone: '', fulfillment: 'pickup', address: '' });
+  const [customer, setCustomer] = useState({ customerName: '', phone: '', fulfillment: 'pickup', barangay: '', address: '' });
   const [nameTouched, setNameTouched] = useState(false);
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [admin, setAdmin] = useState(false);
@@ -330,7 +351,9 @@ const availableFoods = foods.filter(food => food.available);
     (token || food.available) &&
     (category === 'All' || food.category === category)
   );
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const deliveryFee = customer.fulfillment === 'delivery' ? getDeliveryFee(customer.barangay) : 0;
+  const total = subtotal + deliveryFee;
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const chatCopy = chatLabels[chatLanguage === 'auto' ? 'en' : chatLanguage];
 
@@ -584,9 +607,13 @@ const availableFoods = foods.filter(food => food.available);
       setMsg('Choose pickup or delivery.');
       return;
     }
+    if (customer.fulfillment === 'delivery' && !isCoveredDeliveryBarangay(customer.barangay)) {
+      setMsg('Maasin City Area, Available Only');
+      return;
+    }
     if (customer.fulfillment === 'delivery'
       && (typeof customer.address !== 'string' || !customer.address.trim() || customer.address.trim().length > 250)) {
-      setMsg('Enter a delivery address (250 characters or fewer).');
+      setMsg('Enter your house, street, purok, or landmark (250 characters or fewer).');
       return;
     }
     setOrderSubmitting(true);
@@ -719,6 +746,7 @@ const availableFoods = foods.filter(food => food.available);
     setOrderEditDraft({
       customerName: order.customerName,
       phone: order.phone,
+      barangay: order.barangay || '',
       address: order.address || ''
     });
   }
@@ -741,11 +769,15 @@ const availableFoods = foods.filter(food => food.available);
       setMsg('A delivery address is required.');
       return;
     }
+    if (editingOrder.fulfillment === 'delivery' && !isCoveredDeliveryBarangay(orderEditDraft.barangay)) {
+      setMsg('Maasin City Area, Available Only');
+      return;
+    }
     setOrderEditSaving(true);
     try {
       const updatedOrder = await api(`/orders/${editingOrder._id}/customer`, {
         method: 'PATCH',
-        body: JSON.stringify({ customerName, phone, address })
+        body: JSON.stringify({ customerName, phone, barangay: orderEditDraft.barangay, address })
       }, token);
       setOrders(current => current.map(order => order._id === updatedOrder._id ? updatedOrder : order));
       setEditingOrder(null);
@@ -1066,16 +1098,28 @@ const availableFoods = foods.filter(food => food.available);
                     </div>
                   ))}
                 </div>
-                <h3 className="total">Total <em>{peso(total)}</em></h3>
+                <div className="order-price-breakdown">
+                  <p><span>Subtotal</span><b>{peso(subtotal)}</b></p>
+                  {customer.fulfillment === 'delivery' && <p><span>Delivery fee{isCoveredDeliveryBarangay(customer.barangay) ? ` · ${customer.barangay}` : ''}</span><b>{isCoveredDeliveryBarangay(customer.barangay) ? peso(deliveryFee) : 'Unavailable'}</b></p>}
+                  <h3 className="total">Total <em>{peso(total)}</em></h3>
+                </div>
                 <form onSubmit={place} className="form">
                   <label>Full name<input required maxLength={100} autoComplete="name" aria-invalid={nameTouched && !isValidFullName(customer.customerName.trim().replace(/\s+/g, ' '))} aria-describedby={nameTouched && !isValidFullName(customer.customerName.trim().replace(/\s+/g, ' ')) ? 'order-name-help' : undefined} value={customer.customerName} onBlur={() => setNameTouched(true)} onChange={event => setCustomer({ ...customer, customerName: event.target.value })} placeholder="First and last name" /></label>
                   {nameTouched && !isValidFullName(customer.customerName.trim().replace(/\s+/g, ' ')) && <small id="order-name-help" role="alert">Enter your first and last name using letters. Spaces, hyphens, and apostrophes are allowed.</small>}
                   <label>Phone number<input required type="tel" inputMode="tel" autoComplete="tel" aria-invalid={phoneTouched && !isValidPhilippineMobileNumber(customer.phone.trim())} aria-describedby={phoneTouched && !isValidPhilippineMobileNumber(customer.phone.trim()) ? 'order-phone-help' : undefined} value={customer.phone} onBlur={() => setPhoneTouched(true)} onChange={event => setCustomer({ ...customer, phone: event.target.value })} /></label>
                   {phoneTouched && !isValidPhilippineMobileNumber(customer.phone.trim()) && <small id="order-phone-help" role="alert">Enter a valid Philippine mobile number, e.g. 09171234567, +639171234567, or 639171234567.</small>}
-                  <label>Fulfillment<select required value={customer.fulfillment} onChange={event => setCustomer({ ...customer, fulfillment: event.target.value, address: event.target.value === 'delivery' ? customer.address : '' })}><option value="pickup">Pickup</option><option value="delivery">Delivery</option></select></label>
-                  {customer.fulfillment === 'delivery' && <label>Address<input required maxLength={250} autoComplete="street-address" value={customer.address} onChange={event => setCustomer({ ...customer, address: event.target.value })} placeholder="House number, street, barangay, city" /></label>}
+                  <label>Fulfillment<select required value={customer.fulfillment} onChange={event => setCustomer({ ...customer, fulfillment: event.target.value, barangay: event.target.value === 'delivery' ? customer.barangay : '', address: event.target.value === 'delivery' ? customer.address : '' })}><option value="pickup">Pickup</option><option value="delivery">Delivery</option></select></label>
+                  {customer.fulfillment === 'delivery' && <>
+                    <label>Barangay<select required value={customer.barangay} onChange={event => setCustomer({ ...customer, barangay: event.target.value })}>
+                      <option value="">Choose your barangay</option>
+                      {deliveryBarangays.map(barangay => <option key={barangay} value={barangay}>{barangay}</option>)}
+                      <option value={outsideDeliveryArea}>Outside Maasin City / Not listed</option>
+                    </select></label>
+                    {customer.barangay === outsideDeliveryArea && <small className="delivery-warning" role="alert">Maasin City Area, Available Only</small>}
+                    <label>House number, street, purok, or landmark<input required maxLength={250} autoComplete="street-address" value={customer.address} onChange={event => setCustomer({ ...customer, address: event.target.value })} placeholder="Enter your exact location" /></label>
+                  </>}
                   <p className="cash">💵 Cash on {customer.fulfillment}</p>
-                  <button className="cta full" disabled={orderSubmitting || foodsLoading}>{orderSubmitting ? 'Placing order...' : foodsLoading ? 'Loading menu...' : `Place order · ${peso(total)}`}</button>
+                  <button className="cta full" disabled={orderSubmitting || foodsLoading || (customer.fulfillment === 'delivery' && !isCoveredDeliveryBarangay(customer.barangay))}>{orderSubmitting ? 'Placing order...' : foodsLoading ? 'Loading menu...' : `Place order · ${peso(total)}`}</button>
                 </form>
               </>
             )}
@@ -1097,6 +1141,12 @@ const availableFoods = foods.filter(food => food.available);
               <label>Phone number
                 <input required type="tel" inputMode="tel" autoComplete="tel" value={orderEditDraft.phone} onChange={event => setOrderEditDraft({ ...orderEditDraft, phone: event.target.value })} />
               </label>
+              {editingOrder.fulfillment === 'delivery' && <label>Barangay
+                <select required value={orderEditDraft.barangay} onChange={event => setOrderEditDraft({ ...orderEditDraft, barangay: event.target.value })}>
+                  <option value="">Choose your barangay</option>
+                  {deliveryBarangays.map(barangay => <option key={barangay} value={barangay}>{barangay}</option>)}
+                </select>
+              </label>}
               <label>Address{editingOrder.fulfillment === 'delivery' ? '' : ' (optional)'}
                 <textarea required={editingOrder.fulfillment === 'delivery'} maxLength={250} autoComplete="street-address" value={orderEditDraft.address} onChange={event => setOrderEditDraft({ ...orderEditDraft, address: event.target.value })} />
               </label>
@@ -1127,7 +1177,7 @@ const availableFoods = foods.filter(food => food.available);
                 <p><span>Customer</span><b>{receipt.customerName}</b></p>
                 <p><span>Phone</span><b>{receipt.phone}</b></p>
                 <p><span>Fulfilment</span><b>{receipt.fulfillment === 'delivery' ? 'Delivery' : 'Pickup'}</b></p>
-                {receipt.fulfillment === 'delivery' && <p><span>Delivery address</span><b>{receipt.address}</b></p>}
+                {receipt.fulfillment === 'delivery' && <p><span>Delivery address</span><b>{formatDeliveryAddress(receipt)}</b></p>}
                 <p><span>Payment</span><b>Cash on {receipt.fulfillment}</b></p>
                 <p><span>Order date</span><b>{new Date(receipt.createdAt || Date.now()).toLocaleString()}</b></p>
               </div>
@@ -1138,6 +1188,7 @@ const availableFoods = foods.filter(food => food.available);
                     <b>{peso(Number(item.price) * Number(item.quantity))}</b>
                   </p>
                 ))}
+                {receipt.fulfillment === 'delivery' && <p><span>Delivery fee</span><b>{peso(receipt.deliveryFee)}</b></p>}
               </div>
               <div className="receipt-total"><span>Total</span><b>{peso(receipt.total)}</b></div>
             </div>
@@ -1364,7 +1415,7 @@ const availableFoods = foods.filter(food => food.available);
                                 <tbody>{orders.slice(0, 5).map(order => (
                                   <tr key={order._id}>
                                     <td><b>#{order._id.slice(-6).toUpperCase()}</b><small>{new Date(order.createdAt).toLocaleDateString()}</small></td>
-                                    <td className="admin-order-customer"><b>{order.customerName}</b><small>{order.phone}</small>{order.fulfillment === 'delivery' && <small className="admin-order-address">{order.address || 'Delivery address not provided'}</small>}<small>{order.fulfillment === 'delivery' ? 'Delivery' : 'Pickup'}</small></td>
+                                    <td className="admin-order-customer"><b>{order.customerName}</b><small>{order.phone}</small>{order.fulfillment === 'delivery' && <small className="admin-order-address">{formatDeliveryAddress(order) || 'Delivery address not provided'} · Delivery fee {peso(order.deliveryFee)}</small>}<small>{order.fulfillment === 'delivery' ? 'Delivery' : 'Pickup'}</small></td>
                                     <td><div className="admin-order-items">{order.items.map((item, index) => <div className="admin-order-item" key={`${item.foodId || item.name}-${index}`}><img src={getOrderItemImage(item)} alt={item.name} /><span><b>{item.name}</b><small>Qty {item.quantity} · {peso(item.price)}</small></span></div>)}</div></td>
                                     <td><b>{peso(order.total)}</b></td>
                                     <td><span className={`admin-status status-${order.status.toLowerCase().replaceAll(' ', '-')}`}>{order.status}</span></td>
