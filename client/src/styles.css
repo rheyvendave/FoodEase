@@ -7806,6 +7806,278 @@ footer {
   background: transparent;
 }
 
+.site-header {
+  min-height: 82px;
+  background: #fffaf0;
+  border-bottom-color: #eee5d3;
+  box-shadow: none;
+}
+
+.main-nav a,
+.admin-link {
+  color: #214b36;
+}
+
+.main-nav a.active {
+  padding: 9px 16px;
+  border-radius: 999px;
+  color: #fff;
+  background: #174b35;
+}
+
+.main-nav a.active::after {
+  display: none;
+}
+
+.main-nav a:hover,
+.admin-link:hover {
+  color: #b98516;
+}
+
+.admin-link {
+  padding: 9px 16px;
+  border: 1px solid #174b35;
+  border-radius: 999px;
+}
+
+.cart-icon {
+  color: #174b35;
+}
+
+.cart-icon small {
+  color: #173a2b;
+  background: #f5ca3c;
+}
+
+.hero {
+  min-height: 640px;
+  grid-template-columns: minmax(0, .98fr) minmax(0, 1.02fr);
+  gap: clamp(20px, 3vw, 46px);
+  padding: 42px 0 42px max(calc((100% - 1210px) / 2), 44px);
+  background:
+    radial-gradient(ellipse at 2% 45%, rgb(226 234 209 / 55%), transparent 26%),
+    #fffaf0;
+}
+
+.hero-content {
+  max-width: 610px;
+  padding: 24px 0;
+}
+
+.hero-kicker {
+  padding: 0;
+  color: #194f37;
+  background: transparent;
+  font: italic 600 clamp(18px, 2vw, 25px)/1.2 'Brush Script MT', 'Segoe Script', cursive;
+  letter-spacing: 0;
+}
+
+.hero h1 {
+  max-width: 650px;
+  margin: 20px 0 14px;
+  color: #164b35;
+  font: 700 clamp(38px, 4.5vw, 66px)/.98 Georgia, 'Times New Roman', serif;
+  letter-spacing: -.05em;
+}
+
+.hero h1 span,
+.hero h1 em {
+  display: block;
+}
+
+.hero h1 em {
+  margin-top: 2px;
+  color: #f0b928;
+  font: italic 600 clamp(58px, 6vw, 86px)/.92 'Brush Script MT', 'Segoe Script', cursive;
+  letter-spacing: -.035em;
+}
+
+.hero-content p {
+  max-width: 480px;
+  color: #405d4c;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.hero-benefits {
+  max-width: 490px;
+  margin-top: 22px;
+  color: #234c38;
+}
+
+.hero-benefits span {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-items: initial;
+  gap: 10px;
+  padding: 0 15px;
+  border-color: #d9d4bf;
+  text-align: left;
+}
+
+.hero-benefits span:first-child {
+  padding-left: 0;
+}
+
+.hero-benefits b {
+  width: 42px;
+  height: 42px;
+  border: 2px solid #e8ad19;
+  border-radius: 50%;
+  color: #175038;
+  background: transparent;
+  font-size: 20px;
+}
+
+.hero-benefits small {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.hero-button {
+  min-width: 220px;
+  min-height: 54px;
+  gap: 12px;
+  margin-top: 26px;
+  padding-inline: 25px;
+  border-radius: 999px;
+  color: #173d2d;
+  background: #f5c637;
+  font-size: 15px;
+  text-transform: none;
+}
+
+.hero-button:hover {
+  color: #173d2d;
+  background: #eab92a;
+}
+
+.hero-button span:first-child {
+  font-size: 18px;
+}
+
+.hero-visual {
+  height: 590px;
+  align-self: stretch;
+  margin: -20px 0 -20px;
+  border-radius: 0;
+  background: #315536;
+  box-shadow: none;
+  clip-path: polygon(17% 0, 100% 0, 100% 100%, 16% 100%, 13% 96%, 16% 92%, 10% 87%, 14% 82%, 7% 77%, 11% 72%, 4% 66%, 9% 61%, 2% 55%, 7% 50%, 0 44%, 6% 38%, 3% 32%, 10% 26%, 9% 20%, 15% 14%, 13% 8%);
+}
+
+.hero-visual > img {
+  object-position: center;
+}
+
+.hero-visual figcaption {
+  position: absolute;
+  top: 26%;
+  right: 7%;
+  color: #fffaf0;
+  font: italic 600 clamp(28px, 3vw, 42px)/.95 'Brush Script MT', 'Segoe Script', cursive;
+  text-align: center;
+  text-shadow: 0 2px 12px rgb(0 0 0 / 55%);
+  transform: rotate(-8deg);
+}
+
+.hero-visual figcaption span {
+  color: #f5c637;
+  font-family: sans-serif;
+}
+
+@media (max-width: 1000px) {
+  .hero {
+    min-height: 570px;
+    padding-left: 32px;
+  }
+
+  .hero-visual {
+    height: 530px;
+  }
+
+  .hero h1 {
+    font-size: clamp(37px, 5vw, 54px);
+  }
+
+  .hero h1 em {
+    font-size: clamp(54px, 6vw, 70px);
+  }
+
+  .hero-benefits span {
+    gap: 7px;
+    padding-inline: 9px;
+  }
+
+  .hero-benefits small {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 760px) {
+  .site-header {
+    min-height: 70px;
+    padding-inline: 18px;
+  }
+
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 26px;
+    padding: 40px 22px 32px;
+  }
+
+  .hero-content {
+    width: 100%;
+    max-width: 620px;
+    padding: 0;
+  }
+
+  .hero h1 {
+    font-size: clamp(42px, 9vw, 60px);
+  }
+
+  .hero h1 em {
+    font-size: clamp(60px, 12vw, 78px);
+  }
+
+  .hero-visual {
+    width: min(100%, 620px);
+    height: clamp(300px, 75vw, 430px);
+    justify-self: center;
+    margin: 0;
+    border-radius: 22px;
+    clip-path: none;
+  }
+
+  .hero-visual figcaption {
+    top: 12%;
+    right: 7%;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero {
+    gap: 20px;
+    padding-inline: 18px;
+  }
+
+  .hero-benefits span {
+    gap: 6px;
+    padding-inline: 7px;
+  }
+
+  .hero-benefits b {
+    width: 35px;
+    height: 35px;
+    font-size: 17px;
+  }
+
+  .hero-benefits small {
+    font-size: 9px;
+  }
+}
+
 .hero-visual {
   position: relative;
   width: 100%;

@@ -895,31 +895,34 @@ const availableFoods = foods.filter(food => food.available);
           </button>
         </div>
         <nav id="main-navigation" className={`main-nav${mobileMenuOpen ? ' is-open' : ''}`} aria-label="Main navigation">
-          <a className="active" href="#menu" onClick={() => setMobileMenuOpen(false)}>Menu</a>
-          <a href="#sulit-meals" onClick={() => setMobileMenuOpen(false)}>Sulit-Meals</a>
+          <a className="active" href="#top" onClick={() => setMobileMenuOpen(false)}>Home</a>
+          <a href="#menu" onClick={() => setMobileMenuOpen(false)}>Menu</a>
+          <a href="#sulit-meals" onClick={() => setMobileMenuOpen(false)}>Today’s Specials</a>
+          <a href="#about" onClick={() => setMobileMenuOpen(false)}>About</a>
           <a href="#contact" onClick={() => setMobileMenuOpen(false)}>Contact</a>
-          <button className="admin-link" onClick={() => { setMobileMenuOpen(false); setAdmin(true); }}>{token ? 'Dashboard' : 'Admin'}</button>
           <button className="cart-icon" aria-label={`Open cart with ${cartCount} items`} onClick={() => { setMobileMenuOpen(false); setCheckout(true); }}>
             <span aria-hidden="true">🛒</span><small>{cartCount}</small>
           </button>
+          <button className="admin-link" onClick={() => { setMobileMenuOpen(false); setAdmin(true); }}>{token ? 'Dashboard' : 'Admin'}</button>
         </nav>
       </header>
 
       <section className="hero" aria-label="Welcome">
         <div className="hero-content">
-          <span className="hero-kicker">FRESH · FILIPINO · MADE WITH HEART</span>
-          <h1>Filipino Favorites Without the Extra Work</h1>
-          <p>Comforting Filipino meals, freshly prepared and delivered to make your day a little easier.</p>
+          <span className="hero-kicker">Authentic Filipino Meals</span>
+          <h1><span>Real Filipino Food,</span><em>Made Easy.</em></h1>
+          <p>At FoodEase, we bring the taste of home straight to your table. Freshly cooked Filipino meals, now just a click away.</p>
           <div className="hero-benefits" aria-label="FoodEase benefits">
-            <span><b aria-hidden="true">♧</b><small>Filipino<br />Favorites</small></span>
-            <span><b aria-hidden="true">♡</b><small>Made with<br />Care</small></span>
+            <span><b aria-hidden="true">♨</b><small>Freshly<br />Cooked</small></span>
+            <span><b aria-hidden="true">♡</b><small>Homemade<br />With Love</small></span>
             <span><b aria-hidden="true">⌂</b><small>Pickup or<br />Delivery</small></span>
           </div>
-          <a className="hero-button" href="#menu">Order now <span aria-hidden="true">→</span></a>
+          <a className="hero-button" href="#menu"><span aria-hidden="true">🛒</span> Order Now <span aria-hidden="true">→</span></a>
         </div>
-        <div className="hero-visual">
-          <img src="/hero-chef.png" alt="FoodEase chef presenting a freshly prepared meal" />
-        </div>
+        <figure className="hero-visual">
+          <img src="/menu/Chicken%20Adobo.jpeg" alt="Freshly cooked Filipino chicken adobo" />
+          <figcaption>Filipino<br />Comfort Food <span aria-hidden="true">♡</span></figcaption>
+        </figure>
       </section>
 
       {demo && <p className="banner">Preview mode: sample menu is showing. Start Express and MongoDB to save real orders and menu changes.</p>}
