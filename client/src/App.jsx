@@ -917,6 +917,9 @@ const availableFoods = foods.filter(food => food.available);
           </div>
           <a className="hero-button" href="#menu">Order now <span aria-hidden="true">→</span></a>
         </div>
+        <div className="hero-visual">
+          <img src="/hero-chef.png" alt="FoodEase chef presenting a freshly prepared meal" />
+        </div>
       </section>
 
       {demo && <p className="banner">Preview mode: sample menu is showing. Start Express and MongoDB to save real orders and menu changes.</p>}
