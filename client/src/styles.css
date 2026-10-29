@@ -8339,3 +8339,171 @@ footer {
     justify-self: center;
   }
 }
+
+.hero {
+  min-height: clamp(440px, 44vw, 620px);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  justify-items: start;
+  gap: 0;
+  padding: 0 0 0 max(calc((100% - 1280px) / 2), 5.3%);
+  overflow: hidden;
+  color: #2c261f;
+  background: #e8dccb url('/hero-chef.png') left 48% / 112% auto no-repeat;
+}
+
+.hero::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  display: block;
+  background: linear-gradient(90deg, rgb(232 220 203 / 58%) 0%, rgb(232 220 203 / 55%) 27%, rgb(232 220 203 / 38%) 36%, rgb(232 220 203 / 12%) 43%, rgb(232 220 203 / 0%) 50%);
+  content: '';
+}
+
+.hero-content {
+  align-self: center;
+  width: 100%;
+  max-width: min(520px, 41%);
+  padding: 52px 0;
+  color: #2c261f;
+  text-align: left;
+  text-shadow: none;
+}
+
+.hero-kicker {
+  padding: 7px 11px;
+  border: 1px solid rgb(81 67 52 / 55%);
+  border-radius: 999px;
+  color: #514638;
+  background: rgb(255 250 240 / 30%);
+  font-size: 9px;
+  letter-spacing: .1em;
+}
+
+.hero h1 {
+  max-width: 475px;
+  margin: 20px 0 14px;
+  color: #211d19;
+  font-size: clamp(42px, 5vw, 66px);
+  line-height: .96;
+  letter-spacing: -.05em;
+  text-shadow: none;
+}
+
+.hero-content p {
+  max-width: 450px;
+  margin: 0;
+  color: #51473e;
+  font-size: 14px;
+  line-height: 1.6;
+  text-shadow: none;
+}
+
+.hero-benefits {
+  width: min(100%, 400px);
+  margin: 24px 0 0;
+  color: #352f27;
+}
+
+.hero-benefits span {
+  min-height: 65px;
+  padding-inline: 8px;
+  border-color: rgb(93 78 57 / 25%);
+}
+
+.hero-benefits b {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  color: #fffaf0;
+  background: #5e7659;
+  font-size: 15px;
+}
+
+.hero-benefits small {
+  font-size: 9px;
+}
+
+.hero-button {
+  min-width: 160px;
+  min-height: 45px;
+  justify-content: space-between;
+  gap: 18px;
+  margin-top: 21px;
+  color: #312619;
+  background: #f0cf43;
+  font-size: 13px;
+}
+
+.hero-button:hover {
+  color: #312619;
+  background: #e2bd2f;
+}
+
+.hero-visual {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .hero {
+    min-height: clamp(580px, 125vw, 700px);
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0 0 0 22px;
+    background-size: auto 100%;
+    background-position: 50% center;
+  }
+
+  .hero::before {
+    background: linear-gradient(90deg, rgb(232 220 203 / 76%) 0%, rgb(232 220 203 / 72%) 36%, rgb(232 220 203 / 43%) 45%, rgb(232 220 203 / 0%) 59%);
+  }
+
+  .hero-content {
+    width: 48%;
+    max-width: 340px;
+    justify-self: start;
+    padding: 40px 0;
+  }
+
+  .hero h1 {
+    font-size: clamp(30px, 7vw, 42px);
+  }
+}
+
+@media (max-width: 480px) {
+  .hero {
+    min-height: clamp(580px, 145vw, 680px);
+    padding-left: 18px;
+    background-position: 50% center;
+  }
+
+  .hero::before {
+    background: linear-gradient(90deg, rgb(232 220 203 / 76%) 0%, rgb(232 220 203 / 72%) 36%, rgb(232 220 203 / 43%) 45%, rgb(232 220 203 / 0%) 59%);
+  }
+
+  .hero-content {
+    width: 48%;
+    padding-block: 34px;
+  }
+
+  .hero h1 {
+    margin: 17px 0 12px;
+    font-size: clamp(28px, 7.5vw, 34px);
+  }
+
+  .hero-content p {
+    font-size: 12px;
+  }
+
+  .hero-benefits {
+    margin-top: 17px;
+  }
+
+  .hero-benefits span {
+    padding-inline: 3px;
+  }
+
+  .hero-benefits small {
+    font-size: 8px;
+  }
+}
