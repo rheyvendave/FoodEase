@@ -8349,7 +8349,7 @@ footer {
   padding: 0 0 0 max(calc((100% - 1280px) / 2), 5.3%);
   overflow: hidden;
   color: #2c261f;
-  background: #e8dccb url('/hero-chef.png') left 48% / 112% auto no-repeat;
+  background: #e8dccb url('/hero-chef.png') left 48% / 140% auto no-repeat;
 }
 
 .hero::before {
@@ -8451,7 +8451,7 @@ footer {
     grid-template-columns: minmax(0, 1fr);
     padding: 0 0 0 22px;
     background-size: auto 100%;
-    background-position: 50% center;
+    background-position: 27% center;
   }
 
   .hero::before {
@@ -8474,7 +8474,7 @@ footer {
   .hero {
     min-height: clamp(580px, 145vw, 680px);
     padding-left: 18px;
-    background-position: 50% center;
+    background-position: 27% center;
   }
 
   .hero::before {
